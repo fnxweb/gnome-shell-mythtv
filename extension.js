@@ -64,22 +64,48 @@ MythTV.prototype =
         this.actor.get_children().forEach(function(c) { c.destroy() });
         this.actor.add_actor(box);
 
-
         // Add status popup
+        // .. heading 1
+        let box = new St.BoxLayout({style_class:'myth-heading-row'});
+        let label = new St.Label({text:"MythTV Status:"});
+        box.add_actor(label);
+        this.menu.addActor(box);
+
         // .. full free info
-        this.FreeStatusItem = new PopupMenu.PopupMenuItem( '', { reactive: false });
-        this.FreeStatus = new St.Label({text: "Storage:  free ??)" });
-        this.FreeStatusItem.addActor(this.FreeStatus);
-        this.menu.addMenuItem(this.FreeStatusItem);
+        box = new St.BoxLayout({style_class:'myth-data-row'});
+        label = new St.Label({style_class:"myth-misc-label", text:"Free space: "});
+        box.add_actor(label);
+        this.FreeStatus = new St.Label({text:"??"});
+        box.add_actor(this.FreeStatus);
+        label = new St.Label({style_class:"myth-misc-label", text:" ("});
+        box.add_actor(label);
+        this.FreeGBStatus = new St.Label({text:"?? GB"});
+        box.add_actor(this.FreeGBStatus);
+        label = new St.Label({style_class:"myth-misc-label", text:")"});
+        box.add_actor(label);
+        this.menu.addActor(box);
 
         // .. listings status
-        this.ListingsStatusItem = new PopupMenu.PopupMenuItem( '', { reactive: false });
-        this.ListingsStatus = new St.Label({text: "Listings:  ??"});
-        this.ListingsStatusItem.addActor(this.ListingsStatus);
-        this.menu.addMenuItem(this.ListingsStatusItem);
+        box = new St.BoxLayout({style_class:'myth-data-row'});
+        label = new St.Label({style_class:"myth-misc-label", text:"Listing days available: "});
+        box.add_actor(label);
+        this.ListingsStatus = new St.Label({text: "??"});
+        box.add_actor(this.ListingsStatus);
+        label = new St.Label({style_class:"myth-misc-label", text:".  Last fetch: "});
+        box.add_actor(label);
+        this.ListingsLastStatus = new St.Label({text: "??"});
+        box.add_actor(this.ListingsLastStatus);
+        this.menu.addActor(box);
+
+
+        // .. heading 2
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        box = new St.BoxLayout({style_class:'myth-heading-row'});
+        label = new St.Label({text:"Upcoming recordings:"});
+        box.add_actor(label);
+        this.menu.addActor(box);
 
         // .. upcoming
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         this.UpcomingStatusItems = [];
         this.UpcomingStatuses = [];
         for (let idx = 0;  idx < this.Size;  ++idx)
@@ -116,6 +142,8 @@ MythTV.prototype =
                 let outarr = out.toString().split(/\n/);
                 hours = Math.floor(outarr[1]);
                 minutes = Math.floor( (outarr[1] - hours) * 60 );
+                if (minutes < 10)
+                    minutes = "0" + minutes;
                 gb = parseFloat(outarr[0]);
             }
         }
@@ -125,10 +153,14 @@ MythTV.prototype =
         let hoursfree = hours + ":" + minutes;
 
         this.StatusLabel.set_text("Myth " + hoursfree);
-        this.FreeStatus.set_text("Free " + hoursfree + " (" + gb.toFixed(3) + " GB)" );
+        this.FreeStatus.set_text(hoursfree);
+        this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
 
 
         // Get upcoming
+        let prog = 0;
+        let listings = "??";
+        let listings_status = "??";
         // try
         // {
             let [res, out, err, status] = GLib.spawn_command_line_sync('get-status myth');
@@ -138,7 +170,6 @@ MythTV.prototype =
 
                 // Find  progs.
                 let progdata = xml.split(/<Program/);
-                let prog = 0;
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
                     var re = / title="([^"]*)" subTitle="([^"]*)" .* endTime="([^"]*)" startTime="([^"]*)"/;
@@ -166,9 +197,6 @@ MythTV.prototype =
                             upcoming_length + ")" );
                     }
                 }
-                // Blank the rest
-                for (;  prog < this.Size; ++prog)
-                    this.UpcomingStatuses[prog].set_text('');
 
 
                 // Get guide status
@@ -176,12 +204,21 @@ MythTV.prototype =
                 var re = / status="([^"]*)" .* guideDays="([^"]*)"/;
                 var matches;
                 if ((matches = re.exec(guidedata[1])) != null)
-                    this.ListingsStatus.set_text("Listings days available: " + matches[2] + ".  Last fetch: " + matches[1]);
-                else
-                    this.ListingsStatus.set_text("");
+                {
+                    listings = matches[2];
+                    listings_status = matches[1];
+                }
             }
         // }
         // catch (err)  {}
+
+        // Set guide data
+        this.ListingsStatus.set_text(listings);
+        this.ListingsLastStatus.set_text(listings_status);
+
+        // Blank the rest of upcoming
+        for (;  prog < this.Size; ++prog)
+            this.UpcomingStatuses[prog].set_text('');
     }
 }
 
