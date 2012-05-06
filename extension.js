@@ -27,31 +27,54 @@ MythTV.prototype =
 {
     __proto__ : PanelMenu.SystemStatusButton.prototype,
 
+    size : 10,
+
     _init : function()
     {
         PanelMenu.SystemStatusButton.prototype._init.call(this, 'mythtv');
 
+        // Default data
+        this.GbFree = "??? GB";
+        this.HoursFree = "?:??";
+
         // Create button
         this.StatusLabel = new St.Label({
-            text: "Myth ?:??",
+            text: "Myth " + this.HoursFree,
             style_class: "mythtv-label"
         });
 
-        // destroy any previously created children, and add our statusLabel
+        // Replace default icon placeholder with our StatusLabel
         this.actor.get_children().forEach(function(c) { c.destroy() });
         this.actor.add_actor(this.StatusLabel);
 
-        // this.sensorsPath = this._detectSensors();
-        // this.command=["xdg-open", "http://github.com/xtranophilist/gnome-shell-extension-cpu-temperature/issues/"];
-        // if(this.sensorsPath){
-        //     this.title='Error';
-        //     this.content='Run sensors-detect as root. If it doesn\'t help, click here to report with your sensors output!';
-        // }
-        // else{
-        //     this.title='Warning';
-        //     this.content='Please install lm_sensors. If it doesn\'t help, click here to report with your sensors output!';
-        // }
 
+        // Add status popup
+        // .. full free info
+        this.FreeStatusItem = new PopupMenu.PopupMenuItem( '', { reactive: false });
+        this.FreeStatus = new St.Label({text: "Storage:  free ??)" });
+        this.FreeStatusItem.addActor(this.FreeStatus);
+        this.menu.addMenuItem(this.FreeStatusItem);
+
+        // .. listings status
+        this.ListingsStatusItem = new PopupMenu.PopupMenuItem( '', { reactive: false });
+        this.ListingsStatus = new St.Label({text: "Listings:  ??"});
+        this.ListingsStatusItem.addActor(this.ListingsStatus);
+        this.menu.addMenuItem(this.ListingsStatusItem);
+
+        // .. upcoming
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.UpcomingStatusItems = [];
+        this.UpcomingStatuses = [];
+        for (let idx = 0;  idx < this.size;  ++idx)
+        {
+            this.UpcomingStatusItems[idx] = new PopupMenu.PopupMenuItem( '', { reactive: false });
+            this.UpcomingStatuses[idx] = new St.Label({text: "??"});
+            this.UpcomingStatusItems[idx].addActor(this.UpcomingStatuses[idx]);
+            this.menu.addMenuItem(this.UpcomingStatusItems[idx]);
+        }
+        
+
+        // Initial status
         this.getMythStatus();
 
         // Update every minute
@@ -76,6 +99,7 @@ MythTV.prototype =
     {
         var hours = "??";
         var minutes = "??";
+        var gb = 0;
         try
         {
             let [res, out, err, status] = GLib.spawn_command_line_sync('get-status free');
@@ -84,11 +108,16 @@ MythTV.prototype =
                 let outarr = out.toString().split(/\n/);
                 hours = Math.floor(outarr[1]);
                 minutes = Math.floor( (outarr[1] - hours) * 60 );
+                gb = parseFloat(outarr[0]);
             }
         }
         catch (err)  {}
 
-        this.StatusLabel.set_text("Myth " + hours + ":" + minutes);
+        // Update fields
+        let hoursfree = hours + ":" + minutes;
+
+        this.StatusLabel.set_text("Myth " + hoursfree);
+        this.FreeStatus.set_text("MythTV: free " + hoursfree + " (" + gb.toFixed(3) + " GB)" );
     },
 
 
