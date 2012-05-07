@@ -17,8 +17,9 @@ let MythTVMetadata = null;
 // The button
 let MythTVButton = null;
 
-// Update timer
+// Update timers
 let MythTVEvent = null;
+let MythTVUpcomingEvent = null;
 
 
 // Spec
@@ -149,10 +150,15 @@ MythTV.prototype =
 
         // Initial status
         this.getMythStatus();
+        this.getMythUpcomingStatus();
 
-        // Update every minute
-        MythTVEvent = GLib.timeout_add_seconds(0, 60, Lang.bind(this, function () {
+        // Update basics every 45 s., update listings every five minutes
+        MythTVEvent = GLib.timeout_add_seconds(0, 45, Lang.bind(this, function () {
             this.getMythStatus();
+            return true;
+        }));
+        MythTVUpcomingEvent = GLib.timeout_add_seconds(0, 300, Lang.bind(this, function () {
+            this.getMythUpcomingStatus();
             return true;
         }));
     },
@@ -185,14 +191,17 @@ MythTV.prototype =
         this.StatusLabel.set_text("Myth " + hoursfree);
         this.FreeStatus.set_text(hoursfree);
         this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
+    },
 
 
+    getMythUpcomingStatus: function()
+    {
         // Get upcoming
         let prog = 0;
         let listings = "??";
         let listings_status = "??";
-        // try
-        // {
+        try
+        {
             let [res, out, err, status] = GLib.spawn_command_line_sync('get-status myth');
             if (res && status == 0)
             {
@@ -237,8 +246,8 @@ MythTV.prototype =
                     listings_status = matches[1].replace(/\..*/,'.');
                 }
             }
-        // }
-        // catch (err)  {}
+        }
+        catch (err)  {}
 
         // Set guide data
         this.ListingsStatus.set_text(listings);
@@ -282,5 +291,6 @@ function disable()
 {
     MythTVButton.destroy();
     Mainloop.source_remove(MythTVEvent);
+    Mainloop.source_remove(MythTVUpcomingEvent);
     MythTVButton = null;
 }
