@@ -51,10 +51,7 @@ MythTV.prototype =
         //     icon_size: Panel.PANEL_ICON_SIZE
         // });
         // .. text
-        this.StatusLabel = new St.Label({
-            text: "Myth " + this.HoursFree,
-            style_class: "mythtv-label"
-        });
+        this.StatusLabel = new St.Label({style_class:"mythtv-label", text: "Myth " + this.HoursFree});
         // .. combine
         let box = new St.BoxLayout();
         // box.add_actor(logo);
@@ -77,7 +74,7 @@ MythTV.prototype =
         box.add_actor(label);
         this.FreeStatus = new St.Label({text:"??"});
         box.add_actor(this.FreeStatus);
-        label = new St.Label({style_class:"myth-misc-label", text:" ("});
+        label = new St.Label({style_class:"myth-misc-label", text:" hrs ("});
         box.add_actor(label);
         this.FreeGBStatus = new St.Label({text:"?? GB"});
         box.add_actor(this.FreeGBStatus);
@@ -89,31 +86,64 @@ MythTV.prototype =
         box = new St.BoxLayout({style_class:'myth-data-row'});
         label = new St.Label({style_class:"myth-misc-label", text:"Listing days available: "});
         box.add_actor(label);
-        this.ListingsStatus = new St.Label({text: "??"});
+        this.ListingsStatus = new St.Label({text:"??"});
         box.add_actor(this.ListingsStatus);
         label = new St.Label({style_class:"myth-misc-label", text:".  Last fetch: "});
         box.add_actor(label);
-        this.ListingsLastStatus = new St.Label({text: "??"});
+        this.ListingsLastStatus = new St.Label({style_class:"myth-column", text:"??"});
         box.add_actor(this.ListingsLastStatus);
         this.menu.addActor(box);
 
 
         // .. heading 2
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        box = new St.BoxLayout({style_class:'myth-heading-row'});
+        box = new St.BoxLayout({style_class:"myth-heading-row"});
         label = new St.Label({text:"Upcoming recordings:"});
         box.add_actor(label);
         this.menu.addActor(box);
 
         // .. upcoming
-        this.UpcomingStatusItems = [];
-        this.UpcomingStatuses = [];
+        // .. .. build box layout
+        box = new St.BoxLayout({style_class:"myth-data-row"});
+        let title_column  = new St.BoxLayout({vertical:true});
+        let day_column    = new St.BoxLayout({vertical:true});
+        let time_column   = new St.BoxLayout({vertical:true});
+        let length_column = new St.BoxLayout({vertical:true});
+        box.add_actor(title_column);
+        box.add_actor(day_column);
+        box.add_actor(time_column);
+        box.add_actor(length_column);
+        this.menu.addActor(box);
+
+        // .. .. create data stores
+        this.UpcomingTitles    = [];
+        this.UpcomingSubtitles = [];
+        this.UpcomingDays      = [];
+        this.UpcomingTimes     = [];
+        this.UpcomingLengths   = [];
         for (let idx = 0;  idx < this.Size;  ++idx)
         {
-            this.UpcomingStatusItems[idx] = new PopupMenu.PopupMenuItem( '', { reactive: false });
-            this.UpcomingStatuses[idx] = new St.Label({text: "??"});
-            this.UpcomingStatusItems[idx].addActor(this.UpcomingStatuses[idx]);
-            this.menu.addMenuItem(this.UpcomingStatusItems[idx]);
+            // titles
+            box = new St.BoxLayout();
+            this.UpcomingTitles[idx] = new St.Label({text:""});
+            box.add_actor(this.UpcomingTitles[idx]);
+            this.UpcomingSubtitles[idx] = new St.Label({style_class:"myth-misc-label myth-column", text:""});
+            box.add_actor(this.UpcomingSubtitles[idx]);
+            title_column.add_actor(box);
+
+            // times
+            this.UpcomingDays[idx]  = new St.Label({style_class:"myth-misc-label myth-padded myth-right", text:""});
+            day_column.add_actor(this.UpcomingDays[idx]);
+            this.UpcomingTimes[idx] = new St.Label({style_class:"myth-column", text:""});
+            time_column.add_actor(this.UpcomingTimes[idx]);
+
+            // lengths
+            box = new St.BoxLayout();
+            this.UpcomingLengths[idx] = new St.Label({text:""});
+            box.add_actor(this.UpcomingLengths[idx]);
+            label = new St.Label({style_class:"myth-misc-label myth-column", text:" hrs"});
+            box.add_actor(label);
+            length_column.add_actor(box);
         }
         
 
@@ -184,17 +214,15 @@ MythTV.prototype =
                         let length_mins  = Math.floor((length-(length_hours*3600))/60);
                         if (length_mins < 10)
                             length_mins = "0"+length_mins;
-                        upcoming_length   = length_hours + ":" + length_mins;
                         let start = new Date(matches[3]);
-                        let start_time = this.Days[start.getDay()] + " " + start.toLocaleTimeString();
-                        let upcoming_time = start_time.replace(/:..$/,'');
 
                         // Display
                         let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
-                        this.UpcomingStatuses[prog].set_text(
-                            upcoming_title + subtitle + "  starts " +
-                            upcoming_time + " (" +
-                            upcoming_length + ")" );
+                        this.UpcomingTitles[prog].set_text(    upcoming_title );
+                        this.UpcomingSubtitles[prog].set_text( subtitle );
+                        this.UpcomingDays[prog].set_text(      this.Days[start.getDay()] );
+                        this.UpcomingTimes[prog].set_text(     start.toLocaleTimeString().replace(/:..$/,'') );
+                        this.UpcomingLengths[prog].set_text(   length_hours + ":" + length_mins );
                     }
                 }
 
@@ -206,7 +234,7 @@ MythTV.prototype =
                 if ((matches = re.exec(guidedata[1])) != null)
                 {
                     listings = matches[2];
-                    listings_status = matches[1];
+                    listings_status = matches[1].replace(/\..*/,'.');
                 }
             }
         // }
@@ -218,7 +246,13 @@ MythTV.prototype =
 
         // Blank the rest of upcoming
         for (;  prog < this.Size; ++prog)
-            this.UpcomingStatuses[prog].set_text('');
+        {
+            this.UpcomingTitles[prog].set_text(    '' );
+            this.UpcomingSubtitles[prog].set_text( '' );
+            this.UpcomingDays[prog].set_text(      '' );
+            this.UpcomingTimes[prog].set_text(     '' );
+            this.UpcomingLengths[prog].set_text(   '' );
+        }
     }
 }
 
@@ -227,7 +261,6 @@ MythTV.prototype =
 function dprint(msg)
 {
     global.log(msg);
-    Util.spawn(['echo',msg]);
 }
 
 

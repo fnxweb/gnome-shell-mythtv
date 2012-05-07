@@ -12,10 +12,25 @@
 
 .myth-data-row
 {
-  padding-left: 40px;
+  padding-left: 45px;
 }
 
 .myth-misc-label
 {
   color: #999999;
+}
+
+.myth-right
+{
+  text-align: right;
+}
+
+.myth-padded
+{
+  padding-right: 5px;
+}
+
+.myth-column
+{
+  padding-right: 20px;
 }
