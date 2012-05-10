@@ -164,6 +164,50 @@ MythTV.prototype =
     },
 
 
+    // Split line into a paragraph
+    formatParagraph: function(text,width)
+    {
+        let para = "";
+        try
+        {
+            let words = new RegExp("(.{0," + width + "}[^ ]*) (.*)");
+            while (text.length > width)
+            {
+                let matches = words.exec(text);
+                if (matches != null)
+                {
+                    // We have a line, and some more afterwards.
+                    let newline = matches[1];
+                    let therest = matches[2];
+
+                    // Check that the next word isn't too long.
+                    let last = newline.replace(/^.* ([^ ]+)$/, "$1");
+                    if (newline.length > width  &&  (newline.length - width) > (width - (newline.length - last.length - 1)))
+                    {
+                        // last word makes line too long, so move it on to next line.
+                        newline = newline.substring(0,newline.length - last.length - 1);
+                        therest = last + " " + therest;
+                    }
+
+                    // And add
+                    para = para + newline + "\n";
+                    text = therest;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            // Mop up
+            if (text.length)
+                para = para + text; 
+        }
+        catch (err) {}
+        return para;
+    },
+
+
     getMythStatus: function()
     {
         // Free
@@ -211,7 +255,7 @@ MythTV.prototype =
                 let progdata = xml.split(/<Program/);
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
-                    var re = / title="([^"]*)" subTitle="([^"]*)" .* endTime="([^"]*)" startTime="([^"]*)"/;
+                    var re = / title="([^"]*)" subTitle="([^"]*)" .* endTime="([^"]*)" startTime="([^"]*)"(.*)/;
                     var matches;
                     if ((matches = re.exec(progdata[prog+1])) != null)
                     {
@@ -219,19 +263,40 @@ MythTV.prototype =
                         let upcoming_title    = matches[1];
                         let upcoming_subtitle = matches[2];
                         let length = (Date.parse(matches[3]) - Date.parse(matches[4])) / 1000;
+                        let rest              = matches[5];
                         let length_hours = Math.floor(length/3600);
                         let length_mins  = Math.floor((length-(length_hours*3600))/60);
                         if (length_mins < 10)
                             length_mins = "0"+length_mins;
-                        let start = new Date(matches[3]);
+                        let start = new Date(matches[4]);
+                        let end   = new Date(matches[3]);
 
                         // Display
                         let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
+                        let start_text = start.toLocaleTimeString().replace(/:..$/,'');
+                        let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
                         this.UpcomingTitles[prog].set_text(    upcoming_title );
                         this.UpcomingSubtitles[prog].set_text( subtitle );
                         this.UpcomingDays[prog].set_text(      this.Days[start.getDay()] );
-                        this.UpcomingTimes[prog].set_text(     start.toLocaleTimeString().replace(/:..$/,'') );
+                        this.UpcomingTimes[prog].set_text(     start_text );
                         this.UpcomingLengths[prog].set_text(   length_hours + ":" + length_mins );
+                        this.UpcomingTitles[prog].has_tooltip  = false;
+
+                        // OK, let's get some more
+                        var more = />([^<]*)<Channel .* channelName="([^"]*)" .* chanNum="([^"]*)"/;
+                        if ((matches = more.exec(rest)) != null)
+                        {
+                            let desc = matches[1];
+                            desc = desc.replace(/&lt;/,   "<", 'g');
+                            desc = desc.replace(/&gt;/,   ">", 'g');
+                            desc = desc.replace(/&amp;/,  "&", 'g');
+                            desc = desc.replace(/&apos;/, "'", 'g');
+                            desc = desc.replace(/&quot;/, '"', 'g');
+                            let tooltip_desc = this.formatParagraph(desc,64);
+                            this.UpcomingTitles[prog].has_tooltip  = (tooltip_desc.length != 0);
+                            this.UpcomingTitles[prog].tooltip_text =
+                                matches[2] + " (#" + matches[3] + ")  " + start_text + "-" + end_text + "\n" + tooltip_desc;
+                        }
                     }
                 }
 
@@ -261,6 +326,8 @@ MythTV.prototype =
             this.UpcomingDays[prog].set_text(      '' );
             this.UpcomingTimes[prog].set_text(     '' );
             this.UpcomingLengths[prog].set_text(   '' );
+            this.UpcomingTitles[prog].has_tooltip  = false;
+            this.UpcomingTitles[prog].tooltip_text = "";
         }
     }
 }
