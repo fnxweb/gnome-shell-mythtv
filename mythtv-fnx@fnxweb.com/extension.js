@@ -255,7 +255,7 @@ MythTV.prototype =
                 let progdata = xml.split(/<Program/);
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
-                    var re = / title="([^"]*)" subTitle="([^"]*)" .* endTime="([^"]*)" startTime="([^"]*)"(.*)/;
+                    var re = /\btitle="([^"]*)".*\bsubTitle="([^"]*)" .*.*\bendTime="([^"]*)".*\bstartTime="([^"]*)"(.*)/;
                     var matches;
                     if ((matches = re.exec(progdata[prog+1])) != null)
                     {
@@ -283,7 +283,7 @@ MythTV.prototype =
                         this.UpcomingTitles[prog].has_tooltip  = false;
 
                         // OK, let's get some more
-                        var more = />([^<]*)<Channel .* channelName="([^"]*)" .* chanNum="([^"]*)"/;
+                        var more = />([^<]*)<Channel\b.*\bchannelName="([^"]*)".*\bchanNum="([^"]*)"/;
                         if ((matches = more.exec(rest)) != null)
                         {
                             let desc = matches[1];
@@ -303,7 +303,7 @@ MythTV.prototype =
 
                 // Get guide status
                 let guidedata = xml.split(/<Guide/);
-                var re = / status="([^"]*)" .* guideDays="([^"]*)"/;
+                var re = /\bstatus="([^"]*)".*\bguideDays="([^"]*)"/;
                 var matches;
                 if ((matches = re.exec(guidedata[1])) != null)
                 {
