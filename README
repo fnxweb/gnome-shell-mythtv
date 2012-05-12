@@ -1,7 +1,8 @@
 GNOME Shell extension to report MythTV status.  Licenced under the GPL v3.
 
-Currently GNOME 3.2, and local to my usage (requires a get-status command to retrieve free data and myth XML).
+Currently for GNOME 3.2.
 
-More to come ...
+See the README in the delegate subdirectory within the extension.
 
-- Neil Bird <git@fnxweb.com>
+
+- © Neil Bird <git@fnxweb.com>
