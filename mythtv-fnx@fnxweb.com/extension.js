@@ -45,22 +45,11 @@ MythTV.prototype =
         this.HoursFree = "?:??";
 
         // Create button
-        // .. icon
-        // let icon = Gio.icon_new_for_string( MythTVMetadata.path + "/mythtv-mono.png" );
-        // let logo = new St.Icon({
-        //     gicon: icon,
-        //     icon_size: Panel.PANEL_ICON_SIZE
-        // });
-        // .. text
-        this.StatusLabel = new St.Label({style_class:"mythtv-label", text: "Myth " + this.HoursFree});
-        // .. combine
-        let box = new St.BoxLayout();
-        // box.add_actor(logo);
-        box.add_actor(this.StatusLabel);
+        this.StatusLabel = new St.Label({text: "Myth " + this.HoursFree});
 
         // Replace default icon placeholder with our StatusLabel
         this.actor.get_children().forEach(function(c) { c.destroy() });
-        this.actor.add_actor(box);
+        this.actor.add_actor(this.StatusLabel);
 
         // Add status popup
         // .. heading 1
