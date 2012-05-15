@@ -1,14 +1,15 @@
 // Import
-const St = imports.gi.St;
-const Panel = imports.ui.panel;
+const Gio = imports.gi.Gio;
+const GLib = imports.gi.GLib;
 const Lang = imports.lang;
+const Main = imports.ui.main;
+const Mainloop = imports.mainloop;
+const Panel = imports.ui.panel;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
-const Main = imports.ui.main;
-const GLib = imports.gi.GLib;
-const Gio = imports.gi.Gio;
+const Shell = imports.gi.Shell;
+const St = imports.gi.St;
 const Util = imports.misc.util;
-const Mainloop = imports.mainloop;
 
 
 // Extension metadata
@@ -16,10 +17,6 @@ let MythTVMetadata = null;
 
 // The button
 let MythTVButton = null;
-
-// Update timers
-let MythTVEvent = null;
-let MythTVUpcomingEvent = null;
 
 
 // Spec
@@ -33,12 +30,24 @@ MythTV.prototype =
 {
     __proto__ : PanelMenu.SystemStatusButton.prototype,
 
-    Size : 10,
-    Days : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    // Data
+    Debug    : false,
+    Size     : 10,
+    Days     : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    Delegate : '',
+    Tmp      : '',
 
+    // Update timers
+    FreeEvent     : null,
+    UpcomingEvent : null,
+
+
+    // ctor
     _init : function()
     {
         PanelMenu.SystemStatusButton.prototype._init.call(this, 'mythtv');
+        this.Delegate = MythTVMetadata.path + "/delegate/";
+        this.Tmp = "/tmp/_gs_mythtv_ext." + GLib.getenv("USER") + ".";
 
         // Default data
         this.GbFree = "??? GB";
@@ -111,6 +120,7 @@ MythTV.prototype =
         this.UpcomingDays      = [];
         this.UpcomingTimes     = [];
         this.UpcomingLengths   = [];
+        this.UpcomingLengthHours = [];
         for (let idx = 0;  idx < this.Size;  ++idx)
         {
             // titles
@@ -131,25 +141,42 @@ MythTV.prototype =
             box = new St.BoxLayout();
             this.UpcomingLengths[idx] = new St.Label({text:""});
             box.add_actor(this.UpcomingLengths[idx]);
-            label = new St.Label({style_class:"myth-misc-label myth-column", text:" hrs"});
-            box.add_actor(label);
+            this.UpcomingLengthHours[idx] = new St.Label({style_class:"myth-misc-label myth-column", text:""});
+            box.add_actor(this.UpcomingLengthHours[idx]);
             length_column.add_actor(box);
         }
         
 
         // Initial status
-        this.getMythStatus();
+        this.getMythFreeStatus();
         this.getMythUpcomingStatus();
 
         // Update basics every 45 s., update listings every five minutes
-        MythTVEvent = GLib.timeout_add_seconds(0, 45, Lang.bind(this, function () {
-            this.getMythStatus();
+        this.FreeEvent = GLib.timeout_add_seconds(0, 45, Lang.bind(this, function () {
+            this.getMythFreeStatus();
             return true;
         }));
-        MythTVUpcomingEvent = GLib.timeout_add_seconds(0, 300, Lang.bind(this, function () {
+        this.UpcomingEvent = GLib.timeout_add_seconds(0, 300, Lang.bind(this, function () {
             this.getMythUpcomingStatus();
             return true;
         }));
+    },
+
+
+    // Debug
+    dprint: function(msg)
+    {
+        if (this.Debug)
+            this.eprint(msg);
+    },
+
+
+    // Error
+    eprint: function(msg)
+    {
+        global.log("MythTV: " + msg);
+        if (this.Debug)
+            print("MythTV: " + msg);
     },
 
 
@@ -192,23 +219,119 @@ MythTV.prototype =
             if (text.length)
                 para = para + text; 
         }
-        catch (err) {}
+        catch (err)
+        {
+            this.eprint("exception formatting paragraph");
+        }
         return para;
     },
 
 
-    getMythStatus: function()
+    // Build delegate command
+    delegateCommand: function(cmd,arg)
     {
+        let exe = [
+            this.Delegate + 'run-get-status',
+            this.Delegate + cmd,
+            arg,
+            this.Tmp + arg ];
+        this.dprint("MythTV command: " + exe.join(' '));
+        return exe;
+    },
+
+
+    // Request free info.
+    getMythFreeStatus: function()
+    {
+        this.dprint("MythTV getting free");
+        try
+        {
+            // Run request
+            let [success, pid] = GLib.spawn_async(
+                    null,
+                    this.delegateCommand('get-status','free'),
+                    null,
+                    GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                    null );
+            if (success  &&  pid != 0)
+            {
+                // Wait for answer
+                this.dprint("MythTV waiting for free");
+                let me = this;
+                GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
+                    me.dprint("MythTV free process completed, status=" + status);
+                    GLib.spawn_close_pid(pid);
+                    me.readMythFreeStatus();
+                });
+            }
+            else
+            {
+                this.eprint("failure requesting free info., status=" + status);
+            }
+        }
+        catch (err)
+        {
+            this.eprint("exception requesting free info.");
+        }
+    },
+
+
+    // Request listings info.
+    getMythUpcomingStatus: function()
+    {
+        this.dprint("MythTV getting listings");
+        try
+        {
+            // Run request
+            let [success, pid] = GLib.spawn_async(
+                    null,
+                    this.delegateCommand('get-status','myth'),
+                    null,
+                    GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                    null );
+            if (success  &&  pid != 0)
+            {
+                // Wait for answer
+                this.dprint("MythTV waiting for listings");
+                let me = this;
+                GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
+                    me.dprint("MythTV listings process completed, status=" + status);
+                    GLib.spawn_close_pid(pid);
+                    me.readMythUpcomingStatus();
+                });
+            }
+            else
+            {
+                this.eprint("failure requesting listings info., status=" + status);
+            }
+        }
+        catch (err)
+        {
+            this.dprint("exception requesting listings info.");
+        }
+    },
+
+
+    // Read free info.
+    readMythFreeStatus: function()
+    {
+        this.dprint("MythTV processing free");
+
         // Free
         var hours = "??";
         var minutes = "??";
         var gb = 0;
         try
         {
-            let [res, out, err, status] = GLib.spawn_command_line_sync('get-status free');
-            if (res && status == 0)
+            // Check for results
+            if (!GLib.file_test(this.Tmp+'free', GLib.FileTest.EXISTS))
             {
-                let outarr = out.toString().split(/\n/);
+                this.eprint("MythTV free results file not found");
+                return;
+            }
+            else
+            {
+                let outarr = Shell.get_file_contents_utf8_sync(this.Tmp+'free').split(/\n/);
                 hours = Math.floor(outarr[1]);
                 minutes = Math.floor( (outarr[1] - hours) * 60 );
                 if (minutes < 10)
@@ -216,7 +339,10 @@ MythTV.prototype =
                 gb = parseFloat(outarr[0]);
             }
         }
-        catch (err)  {}
+        catch (err)
+        {
+            this.eprint("exception processing free info. [" + err.toString() + "]");
+        }
 
         // Update fields
         let hoursfree = hours + ":" + minutes;
@@ -227,21 +353,29 @@ MythTV.prototype =
     },
 
 
-    getMythUpcomingStatus: function()
+    // Read listings info.
+    readMythUpcomingStatus: function()
     {
+        this.dprint("MythTV processing listings");
+
         // Get upcoming
         let prog = 0;
         let listings = "??";
         let listings_status = "??";
         try
         {
-            let [res, out, err, status] = GLib.spawn_command_line_sync('get-status myth');
-            if (res && status == 0)
+            // Check for results
+            if (!GLib.file_test(this.Tmp+'myth', GLib.FileTest.EXISTS))
             {
-                let xml = out.toString();
+                this.eprint("MythTV listings results file not found");
+                return;
+            }
+            else
+            {
+                let xml = Shell.get_file_contents_utf8_sync(this.Tmp+'myth').split(/\n/);
 
                 // Find  progs.
-                let progdata = xml.split(/<Program/);
+                let progdata = xml.toString().split(/<Program/);
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
                     var re = /\btitle="([^"]*)".*\bsubTitle="([^"]*)" .*.*\bendTime="([^"]*)".*\bstartTime="([^"]*)"(.*)/;
@@ -264,12 +398,13 @@ MythTV.prototype =
                         let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
                         let start_text = start.toLocaleTimeString().replace(/:..$/,'');
                         let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
-                        this.UpcomingTitles[prog].set_text(    upcoming_title );
-                        this.UpcomingSubtitles[prog].set_text( subtitle );
-                        this.UpcomingDays[prog].set_text(      this.Days[start.getDay()] );
-                        this.UpcomingTimes[prog].set_text(     start_text );
-                        this.UpcomingLengths[prog].set_text(   length_hours + ":" + length_mins );
-                        this.UpcomingTitles[prog].has_tooltip  = false;
+                        this.UpcomingTitles[prog].set_text(      upcoming_title );
+                        this.UpcomingSubtitles[prog].set_text(   subtitle );
+                        this.UpcomingDays[prog].set_text(        this.Days[start.getDay()] );
+                        this.UpcomingTimes[prog].set_text(       start_text );
+                        this.UpcomingLengths[prog].set_text(     length_hours + ":" + length_mins );
+                        this.UpcomingLengthHours[prog].set_text( " hrs");
+                        this.UpcomingTitles[prog].has_tooltip = false;
 
                         // OK, let's get some more
                         var more = />([^<]*)<Channel\b.*\bchannelName="([^"]*)".*\bchanNum="([^"]*)"/;
@@ -291,7 +426,7 @@ MythTV.prototype =
 
 
                 // Get guide status
-                let guidedata = xml.split(/<Guide/);
+                let guidedata = xml.toString().split(/<Guide/);
                 var re = /\bstatus="([^"]*)".*\bguideDays="([^"]*)"/;
                 var matches;
                 if ((matches = re.exec(guidedata[1])) != null)
@@ -301,7 +436,10 @@ MythTV.prototype =
                 }
             }
         }
-        catch (err)  {}
+        catch (err)
+        {
+            this.eprint("exception processing listings info.");
+        }
 
         // Set guide data
         this.ListingsStatus.set_text(listings);
@@ -310,22 +448,16 @@ MythTV.prototype =
         // Blank the rest of upcoming
         for (;  prog < this.Size; ++prog)
         {
-            this.UpcomingTitles[prog].set_text(    '' );
-            this.UpcomingSubtitles[prog].set_text( '' );
-            this.UpcomingDays[prog].set_text(      '' );
-            this.UpcomingTimes[prog].set_text(     '' );
-            this.UpcomingLengths[prog].set_text(   '' );
+            this.UpcomingTitles[prog].set_text(      '' );
+            this.UpcomingSubtitles[prog].set_text(   '' );
+            this.UpcomingDays[prog].set_text(        '' );
+            this.UpcomingTimes[prog].set_text(       '' );
+            this.UpcomingLengths[prog].set_text(     '' );
+            this.UpcomingLengthHours[prog].set_text( '' );
             this.UpcomingTitles[prog].has_tooltip  = false;
             this.UpcomingTitles[prog].tooltip_text = "";
         }
     }
-}
-
-
-// Debug
-function dprint(msg)
-{
-    global.log(msg);
 }
 
 
@@ -345,8 +477,8 @@ function enable()
 // Turn off
 function disable()
 {
+    Mainloop.source_remove(MythTVButton.FreeEvent);
+    Mainloop.source_remove(MythTVButton.UpcomingEvent);
     MythTVButton.destroy();
-    Mainloop.source_remove(MythTVEvent);
-    Mainloop.source_remove(MythTVUpcomingEvent);
     MythTVButton = null;
 }

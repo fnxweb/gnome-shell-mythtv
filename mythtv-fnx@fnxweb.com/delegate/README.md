@@ -11,7 +11,7 @@ This directory must contain the scripts that will fetch the data for the extensi
  the first line should be the number of GB free on the MythTV recording
  system.  The second should be the rough number of hours free.
 
-**get-status**  _[optional]_
+**get-status**  [optional]
 >This script, if found, is used in preference to the above two scripts.  It
  will be called with either 'free' or 'myth' as the first argument, in which
  case it is expected to display the equivalent output of each of the above

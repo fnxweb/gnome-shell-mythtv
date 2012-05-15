@@ -1,0 +1,7 @@
+#!/bin/bash
+# Run a given 'get' command ($1) with arg $2, putting output into file $3.
+# This command is run to do a data fetch in the background, and the output
+# file is read after completion to get the result.
+
+rm -f "$3" "$3".tmp 1>/dev/null 2>&1
+"$1" "$2" > "$3".tmp  &&  mv "$3".tmp "$3"
