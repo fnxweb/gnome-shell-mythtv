@@ -36,10 +36,15 @@ MythTV.prototype =
     Days     : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     Delegate : '',
     Tmp      : '',
+    WithMeta : false,
 
     // Update timers
     FreeEvent     : null,
-    UpcomingEvent : null,
+    MythEvent : null,
+
+    // Commands to use
+    FreeCommand : 'get-status-free',
+    MythCommand : 'get-status-myth',
 
 
     // ctor
@@ -50,11 +55,34 @@ MythTV.prototype =
         this.Tmp = "/tmp/_gs_mythtv_ext." + GLib.getenv("USER") + ".";
 
         // Default data
+        // We only do fast free data checks, and GB free space reports, if there's a get-status or get-status-free
         this.GbFree = "??? GB";
-        this.HoursFree = "?:??";
+        if (GLib.file_test(this.Delegate+'get-status-free', GLib.FileTest.EXISTS)  ||
+            GLib.file_test(this.Delegate+'get-status', GLib.FileTest.EXISTS))
+        {
+            this.dprint("Found a free space reporter, running free-space checks");
+            this.WithFree = true;
+            this.HoursFree = "?:??";
+        }
+        else
+        {
+            this.dprint("No free space reporter, only running listings checks");
+            this.HoursFree = "";
+        }
+
+        // Now, what commands to use?
+        if (GLib.file_test(this.Delegate+'get-status', GLib.FileTest.EXISTS))
+        {
+            this.dprint("Found a meta get-status, using that in preference to separate ones");
+            this.FreeCommand = 'get-status';
+            this.MythCommand = 'get-status';
+        }
 
         // Create button
-        this.StatusLabel = new St.Label({text: "Myth " + this.HoursFree});
+        if (this.WithFree)
+            this.StatusLabel = new St.Label({text: "Myth " + this.HoursFree});
+        else
+            this.StatusLabel = new St.Label({text: "Myth"});  // TBD use logo
 
         // Replace default icon placeholder with our StatusLabel
         this.actor.get_children().forEach(function(c) { c.destroy() });
@@ -148,15 +176,17 @@ MythTV.prototype =
         
 
         // Initial status
-        this.getMythFreeStatus();
+        if (this.WithFree)
+            this.getMythFreeStatus();
         this.getMythUpcomingStatus();
 
         // Update basics every 45 s., update listings every five minutes
-        this.FreeEvent = GLib.timeout_add_seconds(0, 45, Lang.bind(this, function () {
-            this.getMythFreeStatus();
-            return true;
-        }));
-        this.UpcomingEvent = GLib.timeout_add_seconds(0, 300, Lang.bind(this, function () {
+        if (this.WithFree)
+            this.FreeEvent = GLib.timeout_add_seconds(0, 45, Lang.bind(this, function () {
+                this.getMythFreeStatus();
+                return true;
+            }));
+        this.MythEvent = GLib.timeout_add_seconds(0, 300, Lang.bind(this, function () {
             this.getMythUpcomingStatus();
             return true;
         }));
@@ -249,7 +279,7 @@ MythTV.prototype =
             // Run request
             let [success, pid] = GLib.spawn_async(
                     this.Delegate,
-                    this.delegateCommand('get-status','free'),
+                    this.delegateCommand(this.FreeCommand,'free'),
                     null,
                     GLib.SpawnFlags.DO_NOT_REAP_CHILD,
                     null );
@@ -285,7 +315,7 @@ MythTV.prototype =
             // Run request
             let [success, pid] = GLib.spawn_async(
                     this.Delegate,
-                    this.delegateCommand('get-status','myth'),
+                    this.delegateCommand(this.MythCommand,'myth'),
                     null,
                     GLib.SpawnFlags.DO_NOT_REAP_CHILD,
                     null );
@@ -372,13 +402,13 @@ MythTV.prototype =
             }
             else
             {
-                let xml = Shell.get_file_contents_utf8_sync(this.Tmp+'myth').split(/\n/);
+                let xml = Shell.get_file_contents_utf8_sync(this.Tmp+'myth').toString();
 
                 // Find  progs.
-                let progdata = xml.toString().split(/<Program/);
+                let progdata = xml.split(/<Program/);
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
-                    var re = /\btitle="([^"]*)".*\bsubTitle="([^"]*)" .*.*\bendTime="([^"]*)".*\bstartTime="([^"]*)"(.*)/;
+                    var re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
                     var matches;
                     if ((matches = re.exec(progdata[prog+1])) != null)
                     {
@@ -407,7 +437,7 @@ MythTV.prototype =
                         this.UpcomingTitles[prog].has_tooltip = false;
 
                         // OK, let's get some more
-                        var more = />([^<]*)<Channel\b.*\bchannelName="([^"]*)".*\bchanNum="([^"]*)"/;
+                        var more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
                         if ((matches = more.exec(rest)) != null)
                         {
                             let desc = matches[1];
@@ -426,8 +456,8 @@ MythTV.prototype =
 
 
                 // Get guide status
-                let guidedata = xml.toString().split(/<Guide/);
-                var re = /\bstatus="([^"]*)".*\bguideDays="([^"]*)"/;
+                let guidedata = xml.split(/<Guide/);
+                var re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
                 var matches;
                 if ((matches = re.exec(guidedata[1])) != null)
                 {
@@ -478,7 +508,7 @@ function enable()
 function disable()
 {
     Mainloop.source_remove(MythTVButton.FreeEvent);
-    Mainloop.source_remove(MythTVButton.UpcomingEvent);
+    Mainloop.source_remove(MythTVButton.MythEvent);
     MythTVButton.destroy();
     MythTVButton = null;
 }
