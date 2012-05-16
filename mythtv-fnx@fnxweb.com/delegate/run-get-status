@@ -1,7 +1,28 @@
 #!/bin/bash
-# Run a given 'get' command ($1) with arg $2, putting output into file $3.
+# Run a given 'get' command ($1) with arg $2, reading the results to local variable.
+# Then, fork off a loop writing the result to the pipe $3.
 # This command is run to do a data fetch in the background, and the output
-# file is read after completion to get the result.
+# pipe is read after process completion (prior to the output report) to get the result.
 
-rm -f "$3" "$3".tmp 1>/dev/null 2>&1
-"$1" "$2" > "$3".tmp  &&  mv "$3".tmp "$3"
+# Args
+cmd="$1"
+arg="$2"
+pipe="$3"
+
+# Ensure pipe exists
+[ -e "$pipe" -a ! -p "$pipe" ]  &&  rm -f "$pipe"
+[ -p "$pipe" ]  ||  mknod "$pipe" p
+
+# Run the command, reading it's results (this IFS ensures input is only split on newline)
+IFS=$'\n'
+result=( $("$cmd" "$arg") )
+
+# Done, now exit, leaving behind a loop that will send it to the pipe
+(
+    exec 1>"$pipe"
+    idx=0
+    while [ $idx -lt ${#result[@]} ];  do
+        echo ${result[$idx]}
+        idx=$((idx+1))
+    done
+) &

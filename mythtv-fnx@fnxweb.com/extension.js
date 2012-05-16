@@ -231,8 +231,8 @@ MythTV.prototype =
     delegateCommand: function(cmd,arg)
     {
         let exe = [
-            this.Delegate + 'run-get-status',
-            this.Delegate + cmd,
+            './run-get-status',
+            './' + cmd,
             arg,
             this.Tmp + arg ];
         this.dprint("MythTV command: " + exe.join(' '));
@@ -248,7 +248,7 @@ MythTV.prototype =
         {
             // Run request
             let [success, pid] = GLib.spawn_async(
-                    null,
+                    this.Delegate,
                     this.delegateCommand('get-status','free'),
                     null,
                     GLib.SpawnFlags.DO_NOT_REAP_CHILD,
@@ -284,7 +284,7 @@ MythTV.prototype =
         {
             // Run request
             let [success, pid] = GLib.spawn_async(
-                    null,
+                    this.Delegate,
                     this.delegateCommand('get-status','myth'),
                     null,
                     GLib.SpawnFlags.DO_NOT_REAP_CHILD,

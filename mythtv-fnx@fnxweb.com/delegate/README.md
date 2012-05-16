@@ -1,5 +1,9 @@
 This directory must contain the scripts that will fetch the data for the extension.
 
+**run-get-status**  [supplied]  _{don't touch this!}_
+>Used to run the required command and redirect output to the given temporary
+ file.
+
 **get-status-myth**  [supplied]  _{called every 5 minutes}_
 >This script connects to the MythTV backend and pulls out the XML status
  report and prints it out.  It presumes that mythfrontend has been properly
