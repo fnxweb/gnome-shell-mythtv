@@ -99,14 +99,24 @@ MythTV.prototype =
         box = new St.BoxLayout({style_class:'myth-data-row'});
         label = new St.Label({style_class:"myth-misc-label", text:"Free space: "});
         box.add_actor(label);
-        this.FreeStatus = new St.Label({text:"??"});
-        box.add_actor(this.FreeStatus);
-        label = new St.Label({style_class:"myth-misc-label", text:" hrs ("});
-        box.add_actor(label);
-        this.FreeGBStatus = new St.Label({text:"?? GB"});
-        box.add_actor(this.FreeGBStatus);
-        label = new St.Label({style_class:"myth-misc-label", text:")"});
-        box.add_actor(label);
+        if (this.WithFree)
+        {
+            // Free space with hours and GB
+            this.FreeStatus = new St.Label({text:"??"});
+            box.add_actor(this.FreeStatus);
+            label = new St.Label({style_class:"myth-misc-label", text:" hrs ("});
+            box.add_actor(label);
+            this.FreeGBStatus = new St.Label({text:"?? GB"});
+            box.add_actor(this.FreeGBStatus);
+            label = new St.Label({style_class:"myth-misc-label myth-column", text:")"});
+            box.add_actor(label);
+        }
+        else
+        {
+            // Only GB free
+            this.FreeGBStatus = new St.Label({style_class:"myth-column",text:"?? GB"});
+            box.add_actor(this.FreeGBStatus);
+        }
         this.menu.addActor(box);
 
         // .. listings status
@@ -408,7 +418,7 @@ MythTV.prototype =
                 let progdata = xml.split(/<Program/);
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
-                    var re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
+                    let re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
                     var matches;
                     if ((matches = re.exec(progdata[prog+1])) != null)
                     {
@@ -455,9 +465,22 @@ MythTV.prototype =
                 }
 
 
+                // Free space, if not fetching that separately
+                if (!this.WithFree)
+                {
+                    let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)"/;
+                    var matches;
+                    if ((matches = re.exec(xml)) != null)
+                    {
+                        let gb = parseFloat(matches[1]) / 1024;
+                        this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
+                    }
+                }
+
+
                 // Get guide status
                 let guidedata = xml.split(/<Guide/);
-                var re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
+                let re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
                 var matches;
                 if ((matches = re.exec(guidedata[1])) != null)
                 {
