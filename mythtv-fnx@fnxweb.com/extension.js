@@ -1,22 +1,21 @@
 // Import
-const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const Lang = imports.lang;
 const Main = imports.ui.main;
 const Mainloop = imports.mainloop;
-const Panel = imports.ui.panel;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Shell = imports.gi.Shell;
 const St = imports.gi.St;
-const Util = imports.misc.util;
 
 
-// Extension metadata
-let MythTVMetadata = null;
+MythTVExt = {
+    // Extension metadata
+    Metadata : null,
 
-// The button
-let MythTVButton = null;
+    // The button
+    Button : null
+};
 
 
 // Spec
@@ -30,16 +29,25 @@ MythTV.prototype =
 {
     __proto__ : PanelMenu.SystemStatusButton.prototype,
 
-    // Data
-    Debug    : false,
-    Size     : 10,
-    Days     : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
-    Delegate : '',
-    Tmp      : '',
-    WithMeta : false,
+    // Timer periods (seconds)
+    FreeTime : 45,
+    MythTime : 300,
 
-    // Update timers
-    FreeEvent     : null,
+    // Data
+    Debug     : false,
+    Size      : 10,
+    Days      : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    Delegate  : '',
+    Tmp       : '',
+    WithMeta  : false,
+    HoursFree : "?:??",
+
+    // Custom icon
+    LogoWidth   : 40,
+    LogoHeight  : 16,
+
+    // Updates
+    FreeEvent : null,
     MythEvent : null,
 
     // Commands to use
@@ -51,7 +59,7 @@ MythTV.prototype =
     _init : function()
     {
         PanelMenu.SystemStatusButton.prototype._init.call(this, 'mythtv');
-        this.Delegate = MythTVMetadata.path + "/delegate/";
+        this.Delegate = MythTVExt.Metadata.path + "/delegate/";
         this.Tmp = "/tmp/_gs_mythtv_ext." + GLib.getenv("USER") + ".";
 
         // Default data
@@ -62,7 +70,6 @@ MythTV.prototype =
         {
             this.dprint("Found a free space reporter, running free-space checks");
             this.WithFree = true;
-            this.HoursFree = "?:??";
         }
         else
         {
@@ -79,18 +86,16 @@ MythTV.prototype =
         }
 
         // Create button
-        if (this.WithFree)
-            this.StatusLabel = new St.Label({text: "Myth " + this.HoursFree});
-        else
-            this.StatusLabel = new St.Label({text: "Myth"});  // TBD use logo
+        this.StatusLabel = new St.Label({text: "Myth" + (this.WithFree ? " " + this.HoursFree : "")});
 
-        // Replace default icon placeholder with our StatusLabel
+        // Replace default icon placeholder with our icon
         this.actor.get_children().forEach(function(c) { c.destroy() });
         this.actor.add_actor(this.StatusLabel);
 
+
         // Add status popup
         // .. heading 1
-        let box = new St.BoxLayout({style_class:'myth-heading-row'});
+        box = new St.BoxLayout({style_class:'myth-heading-row'});
         let label = new St.Label({text:"MythTV Status:"});
         box.add_actor(label);
         this.menu.addActor(box);
@@ -192,11 +197,11 @@ MythTV.prototype =
 
         // Update basics every 45 s., update listings every five minutes
         if (this.WithFree)
-            this.FreeEvent = GLib.timeout_add_seconds(0, 45, Lang.bind(this, function () {
+            this.FreeEvent = GLib.timeout_add_seconds(0, this.FreeTime, Lang.bind(this, function () {
                 this.getMythFreeStatus();
                 return true;
             }));
-        this.MythEvent = GLib.timeout_add_seconds(0, 300, Lang.bind(this, function () {
+        this.MythEvent = GLib.timeout_add_seconds(0, this.MythTime, Lang.bind(this, function () {
             this.getMythUpcomingStatus();
             return true;
         }));
@@ -275,7 +280,7 @@ MythTV.prototype =
             './' + cmd,
             arg,
             this.Tmp + arg ];
-        this.dprint("MythTV command: " + exe.join(' '));
+        this.dprint("command: " + exe.join(' '));
         return exe;
     },
 
@@ -283,7 +288,7 @@ MythTV.prototype =
     // Request free info.
     getMythFreeStatus: function()
     {
-        this.dprint("MythTV getting free");
+        this.dprint("getting free");
         try
         {
             // Run request
@@ -296,10 +301,10 @@ MythTV.prototype =
             if (success  &&  pid != 0)
             {
                 // Wait for answer
-                this.dprint("MythTV waiting for free");
+                this.dprint("waiting for free");
                 let me = this;
                 GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
-                    me.dprint("MythTV free process completed, status=" + status);
+                    me.dprint("free process completed, status=" + status);
                     GLib.spawn_close_pid(pid);
                     me.readMythFreeStatus();
                 });
@@ -319,7 +324,7 @@ MythTV.prototype =
     // Request listings info.
     getMythUpcomingStatus: function()
     {
-        this.dprint("MythTV getting listings");
+        this.dprint("getting listings");
         try
         {
             // Run request
@@ -332,10 +337,10 @@ MythTV.prototype =
             if (success  &&  pid != 0)
             {
                 // Wait for answer
-                this.dprint("MythTV waiting for listings");
+                this.dprint("waiting for listings");
                 let me = this;
                 GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
-                    me.dprint("MythTV listings process completed, status=" + status);
+                    me.dprint("listings process completed, status=" + status);
                     GLib.spawn_close_pid(pid);
                     me.readMythUpcomingStatus();
                 });
@@ -355,18 +360,18 @@ MythTV.prototype =
     // Read free info.
     readMythFreeStatus: function()
     {
-        this.dprint("MythTV processing free");
+        this.dprint("processing free");
 
         // Free
-        var hours = "??";
-        var minutes = "??";
-        var gb = 0;
+        let hours = "??";
+        let minutes = "??";
+        let gb = 0;
         try
         {
             // Check for results
             if (!GLib.file_test(this.Tmp+'free', GLib.FileTest.EXISTS))
             {
-                this.eprint("MythTV free results file not found");
+                this.eprint("free results file not found");
                 return;
             }
             else
@@ -385,10 +390,15 @@ MythTV.prototype =
         }
 
         // Update fields
-        let hoursfree = hours + ":" + minutes;
+        // If hours > 99, drop the minutes
+        if (hours > 99)
+            this.HoursFree = "" + hours;
+        else
+            this.HoursFree = hours + ":" + minutes;
 
-        this.StatusLabel.set_text("Myth " + hoursfree);
-        this.FreeStatus.set_text(hoursfree);
+        if (this.WithFree)
+            this.StatusLabel.set_text("Myth " + this.HoursFree);
+        this.FreeStatus.set_text(this.HoursFree);
         this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
     },
 
@@ -396,7 +406,7 @@ MythTV.prototype =
     // Read listings info.
     readMythUpcomingStatus: function()
     {
-        this.dprint("MythTV processing listings");
+        this.dprint("processing listings");
 
         // Get upcoming
         let prog = 0;
@@ -407,7 +417,7 @@ MythTV.prototype =
             // Check for results
             if (!GLib.file_test(this.Tmp+'myth', GLib.FileTest.EXISTS))
             {
-                this.eprint("MythTV listings results file not found");
+                this.eprint("listings results file not found");
                 return;
             }
             else
@@ -419,7 +429,7 @@ MythTV.prototype =
                 for (;  prog < this.Size && prog < progdata.length; ++prog)
                 {
                     let re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
-                    var matches;
+                    let matches;
                     if ((matches = re.exec(progdata[prog+1])) != null)
                     {
                         // Extract data
@@ -447,7 +457,7 @@ MythTV.prototype =
                         this.UpcomingTitles[prog].has_tooltip = false;
 
                         // OK, let's get some more
-                        var more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
+                        let more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
                         if ((matches = more.exec(rest)) != null)
                         {
                             let desc = matches[1];
@@ -469,7 +479,7 @@ MythTV.prototype =
                 if (!this.WithFree)
                 {
                     let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)"/;
-                    var matches;
+                    let matches;
                     if ((matches = re.exec(xml)) != null)
                     {
                         let gb = parseFloat(matches[1]) / 1024;
@@ -481,7 +491,7 @@ MythTV.prototype =
                 // Get guide status
                 let guidedata = xml.split(/<Guide/);
                 let re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
-                var matches;
+                let matches;
                 if ((matches = re.exec(guidedata[1])) != null)
                 {
                     listings = matches[2];
@@ -517,21 +527,21 @@ MythTV.prototype =
 // Setup
 function init(extensionMeta)
 {
-    MythTVMetadata = extensionMeta;
+    MythTVExt.Metadata = extensionMeta;
 }
 
 // Turn on
 function enable()
 {
-    MythTVButton = new MythTV();
-    Main.panel.addToStatusArea('mythtv', MythTVButton);
+    MythTVExt.Button = new MythTV();
+    Main.panel.addToStatusArea('mythtv', MythTVExt.Button);
 }
 
 // Turn off
 function disable()
 {
-    Mainloop.source_remove(MythTVButton.FreeEvent);
-    Mainloop.source_remove(MythTVButton.MythEvent);
-    MythTVButton.destroy();
-    MythTVButton = null;
+    Mainloop.source_remove(MythTVExt.Button.FreeEvent);
+    Mainloop.source_remove(MythTVExt.Button.MythEvent);
+    MythTVExt.Button.destroy();
+    MythTVExt.Button = null;
 }
