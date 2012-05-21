@@ -6,6 +6,21 @@ GNOME Shell extension to report MythTV status.  Licensed under the GPL V3.
 **Currently for GNOME 3.2.**
 
 
+### Installation
+
+Until such a time as I can persuade the extensions guys to allow an extension
+that contains a few lines of bash script, I'm afraid you will have to install
+manually from this site.
+
+Download the ZIP file (from the link above), and then unpack
+**mythtv-fnx@fnxweb.com** as the directory
+***/home/neil/.local/share/gnome-shell/extensions/mythtv-fnx@fnxweb.com***
+alongside any other extensions you have.
+
+Then simply restart gnome-shell with ***<Alt-F2>r***.  You may have to manually
+enable the extension via the **advanced-settings** GUI.
+
+
 ### Main functionality
 
 This extension polls your MythTV backend periodically (every 5 minutes by
