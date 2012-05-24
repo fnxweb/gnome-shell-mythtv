@@ -12,9 +12,12 @@ Until such a time as I can persuade the extensions guys to allow an extension
 that contains a few lines of bash script, I'm afraid you will have to install
 manually from this site.
 
-Download the ZIP file (from the link above), and then unpack
-**mythtv-fnx@fnxweb.com** as the directory
-***/home/neil/.local/share/gnome-shell/extensions/mythtv-fnx@fnxweb.com***
+Download the ZIP file (from the link above), and then install it from the GNOME
+*Advanced Settings* application's “Shell Extensions/Install Shell Extension”
+function.
+
+Alternatively, unpack **mythtv-fnx@fnxweb.com** as the directory
+***~/.local/share/gnome-shell/extensions/mythtv-fnx@fnxweb.com***
 alongside any other extensions you have.
 
 Then simply restart gnome-shell with ***<Alt-F2>r***.  You may have to manually
