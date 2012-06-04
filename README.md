@@ -49,14 +49,20 @@ space is currently taken up by “LiveTV” and “Deleted” recordings, as I t
 their anticipated deletion into account.
 
 Mostly to support this, but also to allow for others doing something similar,
-the extension uses delegate scripts to fetch the data it wants in the
-background.  The default supplied one fetches data straight from the backend,
-but you may optionally supply another to fetch free-space information as well
-(or one that does both).
+the extension allows you to specify an alternate location from which to get its
+information.  Copy the existing file **config.eg** to **config** and edit it to
+point to a local HTTP server that can provide the required information.  Each
+config. line takes a name (“free” or “myth”), an update period in seconds and a
+URL.
+
+The “myth” data should be the standard Myth XML output.  The optional “free”
+data should be two lines, each with a numerical value.  The first line must be
+the free space in GB, the second the number of hours of recording this
+represents.
 
 ![Screenshot](https://github.com/fnxweb/gnome-shell-mythtv/raw/master/images/screenshot-2.png)
 
-See the README in the delegate subdirectory within the extension for more details.
+See the **config.eg** file for details.
 
 
 ### Customisation

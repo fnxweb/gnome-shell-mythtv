@@ -1,0 +1,11 @@
+# Config file for GNOME SHell MythTV extension
+#
+# Must be called 'config' in the same directory as the extension (where this file is)
+# Each line must start with "free" or "myth", followed by a refresh period in seconds then a URL, with spaces separating.
+#
+# myth: the standard MythTV XML report
+# free: optional report that should generate 2 lines, each with a numerical value.
+#       The first line must be the free space in GB, the second the number of hours of recording this represents.
+
+myth 300 http://mythbox:6544/xml
+# free 60 http://localhost/custommyth/freespace.php

@@ -6,10 +6,12 @@ const Mainloop = imports.mainloop;
 const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Shell = imports.gi.Shell;
+const Soup = imports.gi.Soup;
 const St = imports.gi.St;
 
 
-MythTVExt = {
+// Global storage
+let MythTVExt = {
     // Extension metadata
     Metadata : null,
 
@@ -18,72 +20,135 @@ MythTVExt = {
 };
 
 
-// Spec
+// Spec class
 function MythTV()
 {
     this._init.apply(this, arguments);
 }
 
-// Impl
+// Implement MythTV class
 MythTV.prototype =
 {
     __proto__ : PanelMenu.SystemStatusButton.prototype,
 
     // Timer periods (seconds)
-    FreeTime : 45,
+    FreeTime : 60,
     MythTime : 300,
 
     // Data
     Debug     : false,
     Size      : 10,
     Days      : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
-    Delegate  : '',
-    Tmp       : '',
-    WithMeta  : false,
+    WithFree  : false,
     HoursFree : "?:??",
-
-    // Custom icon
-    LogoWidth   : 40,
-    LogoHeight  : 16,
 
     // Updates
     FreeEvent : null,
     MythEvent : null,
 
-    // Commands to use
-    FreeCommand : 'get-status-free',
-    MythCommand : 'get-status-myth',
+    // URLs to use
+    FreeUrl : '',
+    MythUrl : '',
 
 
     // ctor
     _init : function()
     {
         PanelMenu.SystemStatusButton.prototype._init.call(this, 'mythtv');
-        this.Delegate = MythTVExt.Metadata.path + "/delegate/";
-        this.Tmp = "/tmp/_gs_mythtv_ext." + GLib.getenv("USER") + ".";
 
-        // Default data
-        // We only do fast free data checks, and GB free space reports, if there's a get-status or get-status-free
-        this.GbFree = "??? GB";
-        if (GLib.file_test(this.Delegate+'get-status-free', GLib.FileTest.EXISTS)  ||
-            GLib.file_test(this.Delegate+'get-status', GLib.FileTest.EXISTS))
+        // Read config
+        let config_file = MythTVExt.Metadata.path + "/config";
+        if (GLib.file_test(config_file, GLib.FileTest.EXISTS))
         {
-            this.dprint("Found a free space reporter, running free-space checks");
-            this.WithFree = true;
+            // There's a user config file
+            // See supplied example for syntax, but basically lines of "feed-name rate-seconds url"
+            this.dprint("Found user config file");
+            try
+            {
+                let re = /^ *(.+?) +([0-9]+) +(.+)/;
+                let matches;
+                let config_data = Shell.get_file_contents_utf8_sync(config_file).split(/\n/);
+                for (let line = 0;  line < config_data.length;  ++line)
+                {
+                    // Extract type and URL from line
+                    if (config_data[line].length  &&  (matches = re.exec(config_data[line])) != null)
+                    {
+                        if (matches[1] == "free")
+                        {
+                            // Free space config
+                            this.WithFree = true;
+                            this.FreeTime = 0 + matches[2];
+                            this.FreeUrl  = matches[3];
+                            this.dprint("Reading free at " + this.FreeTime + " seconds from " + this.FreeUrl);
+                        }
+                        else if (matches[1] == "myth")
+                        {
+                            // Myth XML config
+                            this.MythTime = 0 + matches[2];
+                            this.MythUrl = matches[3];
+                            this.dprint("Reading Myth at " + this.MythTime + " seconds from " + this.MythUrl);
+                        }
+                        else if (matches[1] != "#")
+                        {
+                            this.eprint("Failed to parse config file line " + line + ": '" + config_data[line] + "'");
+                        }
+                    }
+                    else
+                    {
+                        this.eprint("Unrecognised config file line " + line + ": '" + config_data[line] + "'");
+                    }
+                }
+            }
+            catch (err)
+            {
+                this.eprint("Exception reading user config file: " + err);
+            }
         }
         else
         {
-            this.dprint("No free space reporter, only running listings checks");
-            this.HoursFree = "";
+            // Use default config (no free, only basic myth direct from server)
+            this.dprint("No user config file");
+            try
+            {
+                let myth_config = GLib.getenv("HOME") + "/.mythtv/config.xml";
+                if (GLib.file_test(myth_config, GLib.FileTest.EXISTS))
+                {
+                    // We only want the MythTV server name
+                    let config_data = Shell.get_file_contents_utf8_sync(myth_config);
+                    let re = /<DBHostName>(.*?)<\/DBHostName/;
+                    let matches;
+                    if ((matches = re.exec(config_data)) != null)
+                    {
+                        this.MythUrl = "http://" + matches[1] + ":6544/xml";
+                        this.dprint("Reading Myth at " + this.MythTime + " seconds from " + this.MythUrl);
+                    }
+                    else
+                    {
+                        this.eprint("Failed to parse ~/.mythtv/config.xml");
+                    }
+                }
+                else
+                {
+                    this.eprint("Failed to find ~/.mythtv/config.xml");
+                }
+            }
+            catch (err)
+            {
+                this.eprint("Exception reading user config file: " + err);
+            }
         }
 
-        // Now, what commands to use?
-        if (GLib.file_test(this.Delegate+'get-status', GLib.FileTest.EXISTS))
-        {
-            this.dprint("Found a meta get-status, using that in preference to separate ones");
-            this.FreeCommand = 'get-status';
-            this.MythCommand = 'get-status';
-        }
+
+        // Create a Soup session with which to do requests
+        this.SoupSession = new Soup.SessionAsync();
+        if (Soup.Session.prototype.add_feature != null)
+            Soup.Session.prototype.add_feature.call(this.SoupSession, new Soup.ProxyResolverDefault());
+
+        // Default data
+        this.GbFree = "??? GB";
+        if (!this.WithFree)
+            this.HoursFree = "";
+
 
         // Create button
         this.StatusLabel = new St.Label({text: "Myth" + (this.WithFree ? " " + this.HoursFree : "")});
@@ -95,7 +160,7 @@ MythTV.prototype =
 
         // Add status popup
         // .. heading 1
-        box = new St.BoxLayout({style_class:'myth-heading-row'});
+        let box = new St.BoxLayout({style_class:'myth-heading-row'});
         let label = new St.Label({text:"MythTV Status:"});
         box.add_actor(label);
         this.menu.addActor(box);
@@ -195,7 +260,7 @@ MythTV.prototype =
             this.getMythFreeStatus();
         this.getMythUpcomingStatus();
 
-        // Update basics every 45 s., update listings every five minutes
+        // Update basics frequently, update listings every five minutes
         if (this.WithFree)
             this.FreeEvent = GLib.timeout_add_seconds(0, this.FreeTime, Lang.bind(this, function () {
                 this.getMythFreeStatus();
@@ -266,14 +331,14 @@ MythTV.prototype =
         }
         catch (err)
         {
-            this.eprint("exception formatting paragraph");
+            this.eprint("exception formatting paragraph: " + err);
         }
         return para;
     },
 
 
     // Build delegate command
-    delegateCommand: function(cmd,arg)
+    xdelegateCommand: function(cmd,arg)
     {
         let exe = [
             './run-get-status',
@@ -289,34 +354,23 @@ MythTV.prototype =
     getMythFreeStatus: function()
     {
         this.dprint("getting free");
+        if (this.FreeUrl == '')
+            return;
         try
         {
-            // Run request
-            let [success, pid] = GLib.spawn_async(
-                    this.Delegate,
-                    this.delegateCommand(this.FreeCommand,'free'),
-                    null,
-                    GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                    null );
-            if (success  &&  pid != 0)
-            {
-                // Wait for answer
-                this.dprint("waiting for free");
-                let me = this;
-                GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
-                    me.dprint("free process completed, status=" + status);
-                    GLib.spawn_close_pid(pid);
-                    me.readMythFreeStatus();
-                });
-            }
-            else
-            {
-                this.eprint("failure requesting free info., status=" + status);
-            }
+            // Trigger request
+            let me = this;
+            let request = Soup.Message.new('GET', this.FreeUrl);
+            this.SoupSession.queue_message(request, function(soup, message) {
+                if (message.status_code == 200)
+                    me.processMythFreeStatus(request.response_body.data);
+                else
+                    me.dprint("error retrieving free info: " + message.status_code);
+            });
         }
         catch (err)
         {
-            this.eprint("exception requesting free info.");
+            this.eprint("exception requesting free info.: " + err);
         }
     },
 
@@ -325,40 +379,29 @@ MythTV.prototype =
     getMythUpcomingStatus: function()
     {
         this.dprint("getting listings");
+        if (this.MythUrl == '')
+            return;
         try
         {
-            // Run request
-            let [success, pid] = GLib.spawn_async(
-                    this.Delegate,
-                    this.delegateCommand(this.MythCommand,'myth'),
-                    null,
-                    GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                    null );
-            if (success  &&  pid != 0)
-            {
-                // Wait for answer
-                this.dprint("waiting for listings");
-                let me = this;
-                GLib.child_watch_add( GLib.PRIORITY_DEFAULT, pid, function(pid,status) {
-                    me.dprint("listings process completed, status=" + status);
-                    GLib.spawn_close_pid(pid);
-                    me.readMythUpcomingStatus();
-                });
-            }
-            else
-            {
-                this.eprint("failure requesting listings info., status=" + status);
-            }
+            // Trigger request
+            let me = this;
+            let request = Soup.Message.new('GET', this.MythUrl);
+            this.SoupSession.queue_message(request, function(soup, message) {
+                if (message.status_code == 200)
+                    me.processMythUpcomingStatus(request.response_body.data);
+                else
+                    me.dprint("error retrieving myth info: " + message.status_code);
+            });
         }
         catch (err)
         {
-            this.dprint("exception requesting listings info.");
+            this.dprint("exception requesting listings info.: " + err);
         }
     },
 
 
     // Read free info.
-    readMythFreeStatus: function()
+    processMythFreeStatus: function(data)
     {
         this.dprint("processing free");
 
@@ -368,25 +411,17 @@ MythTV.prototype =
         let gb = 0;
         try
         {
-            // Check for results
-            if (!GLib.file_test(this.Tmp+'free', GLib.FileTest.EXISTS))
-            {
-                this.eprint("free results file not found");
-                return;
-            }
-            else
-            {
-                let outarr = Shell.get_file_contents_utf8_sync(this.Tmp+'free').split(/\n/);
-                hours = Math.floor(outarr[1]);
-                minutes = Math.floor( (outarr[1] - hours) * 60 );
-                if (minutes < 10)
-                    minutes = "0" + minutes;
-                gb = parseFloat(outarr[0]);
-            }
+            // Process results string
+            let outarr = data.toString().split(/\n/);
+            hours = Math.floor(outarr[1]);
+            minutes = Math.floor( (outarr[1] - hours) * 60 );
+            if (minutes < 10)
+                minutes = "0" + minutes;
+            gb = parseFloat(outarr[0]);
         }
         catch (err)
         {
-            this.eprint("exception processing free info. [" + err.toString() + "]");
+            this.eprint("exception processing free info. [" + data.toString() + "]: " + err);
         }
 
         // Update fields
@@ -404,7 +439,7 @@ MythTV.prototype =
 
 
     // Read listings info.
-    readMythUpcomingStatus: function()
+    processMythUpcomingStatus: function(data)
     {
         this.dprint("processing listings");
 
@@ -414,94 +449,85 @@ MythTV.prototype =
         let listings_status = "??";
         try
         {
-            // Check for results
-            if (!GLib.file_test(this.Tmp+'myth', GLib.FileTest.EXISTS))
+            let xml = data.toString();
+
+            // Find  progs.
+            let progdata = xml.split(/<Program/);
+            for (;  prog < this.Size && prog < progdata.length; ++prog)
             {
-                this.eprint("listings results file not found");
-                return;
-            }
-            else
-            {
-                let xml = Shell.get_file_contents_utf8_sync(this.Tmp+'myth').toString();
-
-                // Find  progs.
-                let progdata = xml.split(/<Program/);
-                for (;  prog < this.Size && prog < progdata.length; ++prog)
-                {
-                    let re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
-                    let matches;
-                    if ((matches = re.exec(progdata[prog+1])) != null)
-                    {
-                        // Extract data
-                        let upcoming_title    = matches[1];
-                        let upcoming_subtitle = matches[2];
-                        let length = (Date.parse(matches[3]) - Date.parse(matches[4])) / 1000;
-                        let rest              = matches[5];
-                        let length_hours = Math.floor(length/3600);
-                        let length_mins  = Math.floor((length-(length_hours*3600))/60);
-                        if (length_mins < 10)
-                            length_mins = "0"+length_mins;
-                        let start = new Date(matches[4]);
-                        let end   = new Date(matches[3]);
-
-                        // Display
-                        let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
-                        let start_text = start.toLocaleTimeString().replace(/:..$/,'');
-                        let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
-                        this.UpcomingTitles[prog].set_text(      upcoming_title );
-                        this.UpcomingSubtitles[prog].set_text(   subtitle );
-                        this.UpcomingDays[prog].set_text(        this.Days[start.getDay()] );
-                        this.UpcomingTimes[prog].set_text(       start_text );
-                        this.UpcomingLengths[prog].set_text(     length_hours + ":" + length_mins );
-                        this.UpcomingLengthHours[prog].set_text( " hrs");
-                        this.UpcomingTitles[prog].has_tooltip = false;
-
-                        // OK, let's get some more
-                        let more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
-                        if ((matches = more.exec(rest)) != null)
-                        {
-                            let desc = matches[1];
-                            desc = desc.replace(/&lt;/,   "<", 'g');
-                            desc = desc.replace(/&gt;/,   ">", 'g');
-                            desc = desc.replace(/&amp;/,  "&", 'g');
-                            desc = desc.replace(/&apos;/, "'", 'g');
-                            desc = desc.replace(/&quot;/, '"', 'g');
-                            let tooltip_desc = this.formatParagraph(desc,64);
-                            this.UpcomingTitles[prog].has_tooltip  = (tooltip_desc.length != 0);
-                            this.UpcomingTitles[prog].tooltip_text =
-                                matches[2] + " (#" + matches[3] + ")  " + start_text + "-" + end_text + "\n" + tooltip_desc;
-                        }
-                    }
-                }
-
-
-                // Free space, if not fetching that separately
-                if (!this.WithFree)
-                {
-                    let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)"/;
-                    let matches;
-                    if ((matches = re.exec(xml)) != null)
-                    {
-                        let gb = parseFloat(matches[1]) / 1024;
-                        this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
-                    }
-                }
-
-
-                // Get guide status
-                let guidedata = xml.split(/<Guide/);
-                let re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
+                let re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
                 let matches;
-                if ((matches = re.exec(guidedata[1])) != null)
+                if ((matches = re.exec(progdata[prog+1])) != null)
                 {
-                    listings = matches[2];
-                    listings_status = matches[1].replace(/\..*/,'.');
+                    // Extract data
+                    let upcoming_title    = matches[1];
+                    let upcoming_subtitle = matches[2];
+                    let length = (Date.parse(matches[3]) - Date.parse(matches[4])) / 1000;
+                    let rest              = matches[5];
+                    let length_hours = Math.floor(length/3600);
+                    let length_mins  = Math.floor((length-(length_hours*3600))/60);
+                    if (length_mins < 10)
+                        length_mins = "0"+length_mins;
+                    let start = new Date(matches[4]);
+                    let end   = new Date(matches[3]);
+
+                    // Display
+                    let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
+                    let start_text = start.toLocaleTimeString().replace(/:..$/,'');
+                    let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
+                    this.UpcomingTitles[prog].set_text(      upcoming_title );
+                    this.UpcomingSubtitles[prog].set_text(   subtitle );
+                    this.UpcomingDays[prog].set_text(        this.Days[start.getDay()] );
+                    this.UpcomingTimes[prog].set_text(       start_text );
+                    this.UpcomingLengths[prog].set_text(     length_hours + ":" + length_mins );
+                    this.UpcomingLengthHours[prog].set_text( " hrs");
+                    this.UpcomingTitles[prog].has_tooltip = false;
+
+                    // OK, let's get some more
+                    let more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
+                    if ((matches = more.exec(rest)) != null)
+                    {
+                        let desc = matches[1];
+                        desc = desc.replace(/&lt;/,   "<", 'g');
+                        desc = desc.replace(/&gt;/,   ">", 'g');
+                        desc = desc.replace(/&amp;/,  "&", 'g');
+                        desc = desc.replace(/&apos;/, "'", 'g');
+                        desc = desc.replace(/&quot;/, '"', 'g');
+                        let tooltip_desc = this.formatParagraph(desc,64);
+                        this.UpcomingTitles[prog].has_tooltip  = (tooltip_desc.length != 0);
+                        this.UpcomingTitles[prog].tooltip_text =
+                            matches[2] + " (#" + matches[3] + ")  " + start_text + "-" + end_text + "\n" + tooltip_desc;
+                    }
                 }
+            }
+
+
+            // Free space, if not fetching that separately
+            if (!this.WithFree)
+            {
+                let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)"/;
+                let matches;
+                if ((matches = re.exec(xml)) != null)
+                {
+                    let gb = parseFloat(matches[1]) / 1024;
+                    this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
+                }
+            }
+
+
+            // Get guide status
+            let guidedata = xml.split(/<Guide/);
+            let re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
+            let matches;
+            if ((matches = re.exec(guidedata[1])) != null)
+            {
+                listings = matches[2];
+                listings_status = matches[1].replace(/\..*/,'.');
             }
         }
         catch (err)
         {
-            this.eprint("exception processing listings info.");
+            this.eprint("exception processing listings info.: " + err);
         }
 
         // Set guide data
