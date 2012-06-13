@@ -8,9 +8,11 @@ GNOME Shell extension to report MythTV status.  Licensed under the GPL V3.
 
 ### Installation
 
-Until such a time as I can persuade the extensions guys to allow an extension
-that contains a few lines of bash script, I'm afraid you will have to install
-manually from this site.
+#### The easy way
+
+Install it from the [GNOME Extensions website](https://extensions.gnome.org/).
+
+#### The difficult way
 
 Download the ZIP file (from the link above), and then install it from the GNOME
 *Advanced Settings* application's “Shell Extensions/Install Shell Extension”
