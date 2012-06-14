@@ -505,11 +505,12 @@ MythTV.prototype =
             // Free space, if not fetching that separately
             if (!this.WithFree)
             {
-                let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)"/;
+                let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)".*?\bdeleted="([^"]*)".*?\bexpirable="([^"]*)".*?\blivetv="([^"]*)"/;
                 let matches;
                 if ((matches = re.exec(xml)) != null)
                 {
-                    let gb = parseFloat(matches[1]) / 1024;
+                    let gb = (parseFloat(matches[1]) + parseFloat(matches[2]) + parseFloat(matches[3]) + parseFloat(matches[4]))
+                            / 1024;
                     this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
                 }
             }
