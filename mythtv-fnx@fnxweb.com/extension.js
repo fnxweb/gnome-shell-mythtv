@@ -337,16 +337,15 @@ MythTV.prototype =
     },
 
 
-    // Build delegate command
-    xdelegateCommand: function(cmd,arg)
+    // Un-escape XML encoded strings
+    unescapeString: function(xmlstr)
     {
-        let exe = [
-            './run-get-status',
-            './' + cmd,
-            arg,
-            this.Tmp + arg ];
-        this.dprint("command: " + exe.join(' '));
-        return exe;
+        xmlstr = xmlstr.replace(/&lt;/,   '<', 'g');
+        xmlstr = xmlstr.replace(/&gt;/,   '>', 'g');
+        xmlstr = xmlstr.replace(/&quot;/, '"', 'g');
+        xmlstr = xmlstr.replace(/&apos;/, "'", 'g');
+        xmlstr = xmlstr.replace(/&amp;/,  '&', 'g');
+        return xmlstr;
     },
 
 
@@ -460,8 +459,8 @@ MythTV.prototype =
                 if ((matches = re.exec(progdata[prog+1])) != null)
                 {
                     // Extract data
-                    let upcoming_title    = matches[1];
-                    let upcoming_subtitle = matches[2];
+                    let upcoming_title    = this.unescapeString(matches[1]);
+                    let upcoming_subtitle = this.unescapeString(matches[2]);
                     let length = (Date.parse(matches[3]) - Date.parse(matches[4])) / 1000;
                     let rest              = matches[5];
                     let length_hours = Math.floor(length/3600);
@@ -487,13 +486,7 @@ MythTV.prototype =
                     let more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
                     if ((matches = more.exec(rest)) != null)
                     {
-                        let desc = matches[1];
-                        desc = desc.replace(/&lt;/,   "<", 'g');
-                        desc = desc.replace(/&gt;/,   ">", 'g');
-                        desc = desc.replace(/&amp;/,  "&", 'g');
-                        desc = desc.replace(/&apos;/, "'", 'g');
-                        desc = desc.replace(/&quot;/, '"', 'g');
-                        let tooltip_desc = this.formatParagraph(desc,64);
+                        let tooltip_desc = this.formatParagraph( this.unescapeString(matches[1]), 64 );
                         this.UpcomingTitles[prog].has_tooltip  = (tooltip_desc.length != 0);
                         this.UpcomingTitles[prog].tooltip_text =
                             matches[2] + " (#" + matches[3] + ")  " + start_text + "-" + end_text + "\n" + tooltip_desc;
