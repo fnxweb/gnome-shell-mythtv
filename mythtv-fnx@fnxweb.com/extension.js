@@ -65,7 +65,8 @@ MythTV.prototype =
             this.dprint("Found user config file");
             try
             {
-                let re = /^ *(.+?) +([0-9]+) +(.+)/;
+                let re = /^ *([^#]+?) +([0-9]+) +(.+)/;
+                let r0 = /^ *(#.*)?$/;
                 let matches;
                 let config_data = Shell.get_file_contents_utf8_sync(config_file).split(/\n/);
                 for (let line = 0;  line < config_data.length;  ++line)
@@ -88,12 +89,12 @@ MythTV.prototype =
                             this.MythUrl = matches[3];
                             this.dprint("Reading Myth at " + this.MythTime + " seconds from " + this.MythUrl);
                         }
-                        else if (matches[1] != "#")
+                        else
                         {
                             this.eprint("Failed to parse config file line " + line + ": '" + config_data[line] + "'");
                         }
                     }
-                    else
+                    else if (config_data[line].length  &&  (matches = r0.exec(config_data[line])) == null)
                     {
                         this.eprint("Unrecognised config file line " + line + ": '" + config_data[line] + "'");
                     }
