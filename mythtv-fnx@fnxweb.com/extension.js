@@ -41,6 +41,7 @@ MythTV.prototype =
     Days      : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     WithFree  : false,
     HoursFree : "?:??",
+    Used      : "??%",
 
     // Updates
     FreeEvent : null,
@@ -148,7 +149,10 @@ MythTV.prototype =
         // Default data
         this.GbFree = "??? GB";
         if (!this.WithFree)
+        {
             this.HoursFree = "";
+            this.Used = "";
+        }
 
 
         // Create button
@@ -409,30 +413,41 @@ MythTV.prototype =
         let hours = "??";
         let minutes = "??";
         let gb = 0;
+        this.Used = 0;
         try
         {
             // Process results string
             let outarr = data.toString().split(/\n/);
-            hours = Math.floor(outarr[1]);
-            minutes = Math.floor( (outarr[1] - hours) * 60 );
+            if (outarr.length >= 2)
+                hours = Math.floor(outarr[1]);
+            if (outarr.length >= 2)
+                minutes = Math.floor( (outarr[1] - hours) * 60 );
             if (minutes < 10)
                 minutes = "0" + minutes;
             gb = parseFloat(outarr[0]);
+            if (outarr.length >= 3)
+                this.Used = "" + Math.floor(outarr[2]) + "%";
         }
         catch (err)
         {
             this.eprint("exception processing free info. [" + data.toString() + "]: " + err);
         }
 
-        // Update fields
-        // If hours > 99, drop the minutes
-        if (hours > 99)
+        // If hours >= 100, drop the minutes
+        if (hours >= 100)
             this.HoursFree = "" + hours;
         else
             this.HoursFree = hours + ":" + minutes;
 
+        // Update fields
         if (this.WithFree)
-            this.StatusLabel.set_text("Myth " + this.HoursFree);
+        {
+            // If hours > 150, use % used
+            if (hours >= 150)
+                this.StatusLabel.set_text("Myth " + this.Used);
+            else
+                this.StatusLabel.set_text("Myth " + this.HoursFree);
+        }
         this.FreeStatus.set_text(this.HoursFree);
         this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
     },
