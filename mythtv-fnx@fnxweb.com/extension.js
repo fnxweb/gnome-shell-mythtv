@@ -8,6 +8,10 @@ const PopupMenu = imports.ui.popupMenu;
 const Shell = imports.gi.Shell;
 const Soup = imports.gi.Soup;
 const St = imports.gi.St;
+const Atk = imports.gi.Atk;
+const ExtensionUtils = imports.misc.extensionUtils
+
+const IndicatorName = 'MythTV';
 
 
 // Global storage
@@ -20,16 +24,11 @@ let MythTVExt = {
 };
 
 
-// Spec class
-function MythTV()
-{
-    this._init.apply(this, arguments);
-}
-
 // Implement MythTV class
-MythTV.prototype =
+const MythTV = new Lang.Class(
 {
-    __proto__ : PanelMenu.SystemStatusButton.prototype,
+    Name    : IndicatorName,
+    Extends : PanelMenu.Button,
 
     // Timer periods (seconds)
     FreeTime : 60,
@@ -55,7 +54,9 @@ MythTV.prototype =
     // ctor
     _init : function()
     {
-        PanelMenu.SystemStatusButton.prototype._init.call(this, 'mythtv');
+        this.parent(null, IndicatorName);
+        this.actor.accessible_role = Atk.Role.TOGGLE_BUTTON;
+        MythTVExt.Metadata = ExtensionUtils.getCurrentExtension();
 
         // Read config
         let config_file = MythTVExt.Metadata.path + "/config";
@@ -163,12 +164,19 @@ MythTV.prototype =
         this.actor.add_actor(this.StatusLabel);
 
 
+        // Prep. menu
+        if (Main.panel._menus == undefined)
+            Main.panel.menuManager.addMenu(this.menu);
+        else
+            Main.panel._menus.addMenu(this.menu);
+
+
         // Add status popup
         // .. heading 1
         let box = new St.BoxLayout({style_class:'myth-heading-row'});
         let label = new St.Label({text:"MythTV Status:"});
         box.add_actor(label);
-        this.menu.addActor(box);
+        this.addMenuItem(box);
 
         // .. full free info
         box = new St.BoxLayout({style_class:'myth-data-row'});
@@ -192,7 +200,7 @@ MythTV.prototype =
             this.FreeGBStatus = new St.Label({style_class:"myth-column",text:"?? GB"});
             box.add_actor(this.FreeGBStatus);
         }
-        this.menu.addActor(box);
+        this.addMenuItem(box);
 
         // .. listings status
         box = new St.BoxLayout({style_class:'myth-data-row'});
@@ -204,7 +212,7 @@ MythTV.prototype =
         box.add_actor(label);
         this.ListingsLastStatus = new St.Label({style_class:"myth-column", text:"??"});
         box.add_actor(this.ListingsLastStatus);
-        this.menu.addActor(box);
+        this.addMenuItem(box);
 
 
         // .. heading 2
@@ -212,7 +220,7 @@ MythTV.prototype =
         box = new St.BoxLayout({style_class:"myth-heading-row"});
         label = new St.Label({text:"Upcoming recordings:"});
         box.add_actor(label);
-        this.menu.addActor(box);
+        this.addMenuItem(box);
 
         // .. upcoming
         // .. .. build box layout
@@ -225,7 +233,7 @@ MythTV.prototype =
         box.add_actor(day_column);
         box.add_actor(time_column);
         box.add_actor(length_column);
-        this.menu.addActor(box);
+        this.addMenuItem(box);
 
         // .. .. create data stores
         this.UpcomingTitles    = [];
@@ -285,13 +293,21 @@ MythTV.prototype =
             this.eprint(msg);
     },
 
-
     // Error
     eprint: function(msg)
     {
         global.log("MythTV: " + msg);
         if (this.Debug)
             print("MythTV: " + msg);
+    },
+
+
+    // Add an item to the “menu”
+    addMenuItem: function(item)
+    {
+        let menuitem = new PopupMenu.PopupBaseMenuItem({ reactive:false });
+        menuitem.actor.add_actor( item );
+        this.menu.addMenuItem( menuitem );
     },
 
 
@@ -557,20 +573,19 @@ MythTV.prototype =
             this.UpcomingTitles[prog].tooltip_text = "";
         }
     }
-}
+})
 
 
 // Setup
-function init(extensionMeta)
+function init()
 {
-    MythTVExt.Metadata = extensionMeta;
 }
 
 // Turn on
 function enable()
 {
     MythTVExt.Button = new MythTV();
-    Main.panel.addToStatusArea('mythtv', MythTVExt.Button);
+    Main.panel.addToStatusArea( IndicatorName, MythTVExt.Button );
 }
 
 // Turn off
