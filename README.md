@@ -3,7 +3,7 @@ GNOME Shell MythTV
 
 GNOME Shell extension to report MythTV status.  Licensed under the GPL V3.
 
-**Currently for GNOME 3.2.**
+**Currently for GNOME 3.10.**
 
 
 ### Installation
@@ -58,9 +58,10 @@ config. line takes a name (“free” or “myth”), an update period in second
 URL.
 
 The “myth” data should be the standard Myth XML output.  The optional “free”
-data should be two lines, each with a numerical value.  The first line must be
-the free space in GB, the second the number of hours of recording this
-represents.
+data should be two to three lines, each with a numerical value.  The first line
+must be the free space in GB, the second the number of hours of recording this
+represents.  If present, the third line must be a percentage-used value, which
+is used if the free space is particularly large (about 150 hours).
 
 ![Screenshot](https://github.com/fnxweb/gnome-shell-mythtv/raw/master/images/screenshot-2.png)
 

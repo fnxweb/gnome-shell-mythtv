@@ -512,17 +512,6 @@ const MythTV = new Lang.Class(
                     this.UpcomingTimes[prog].set_text(       start_text );
                     this.UpcomingLengths[prog].set_text(     length_hours + ":" + length_mins );
                     this.UpcomingLengthHours[prog].set_text( " hrs");
-                    this.UpcomingTitles[prog].has_tooltip = false;
-
-                    // OK, let's get some more
-                    let more = />([^<]*)<Channel\b.*?\bchannelName="([^"]*)".*?\bchanNum="([^"]*)"/;
-                    if ((matches = more.exec(rest)) != null)
-                    {
-                        let tooltip_desc = this.formatParagraph( this.unescapeString(matches[1]), 64 );
-                        this.UpcomingTitles[prog].has_tooltip  = (tooltip_desc.length != 0);
-                        this.UpcomingTitles[prog].tooltip_text =
-                            matches[2] + " (#" + matches[3] + ")  " + start_text + "-" + end_text + "\n" + tooltip_desc;
-                    }
                 }
             }
 
@@ -569,8 +558,6 @@ const MythTV = new Lang.Class(
             this.UpcomingTimes[prog].set_text(       '' );
             this.UpcomingLengths[prog].set_text(     '' );
             this.UpcomingLengthHours[prog].set_text( '' );
-            this.UpcomingTitles[prog].has_tooltip  = false;
-            this.UpcomingTitles[prog].tooltip_text = "";
         }
     }
 })

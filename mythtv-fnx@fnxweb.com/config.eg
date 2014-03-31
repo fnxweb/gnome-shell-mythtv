@@ -4,8 +4,9 @@
 # Each line must start with "free" or "myth", followed by a refresh period in seconds then a URL, with spaces separating.
 #
 # myth: the standard MythTV XML report
-# free: optional report that should generate 2 lines, each with a numerical value.
+# free: optional report that should generate 2-3 lines, each with a numerical value.
 #       The first line must be the free space in GB, the second the number of hours of recording this represents.
+#       If present, the third line must be a percentage-used value (used of the free space is >= 150 hours).
 
 myth 300 http://mythbox:6544/xml
 # free 60 http://localhost/custommyth/freespace.php
