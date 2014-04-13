@@ -122,7 +122,7 @@ const MythTV = new Lang.Class(
                     let matches;
                     if ((matches = re.exec(config_data)) != null)
                     {
-                        this.MythUrl = "http://" + matches[1] + ":6544/xml";
+                        this.MythUrl = "http://" + matches[1] + ":6544/Status/xml";
                         this.dprint("Reading Myth at " + this.MythTime + " seconds from " + this.MythUrl);
                     }
                     else
@@ -478,9 +478,23 @@ const MythTV = new Lang.Class(
         let prog = 0;
         let listings = "??";
         let listings_status = "??";
+        let utc_mode = false;
         try
         {
             let xml = data.toString();
+
+            // Get Myth version (0.26+ uses UTC times, previous used localtime)
+            let stat = xml.split(/<Status/);
+            if (stat.length > 1)
+            {
+                let mythver = 0.0;
+                let vnre = /\bversion="([0-9]+\.[0-9]+)/;
+                let matches = vnre.exec(stat[1]);
+                if (matches != null)
+                    mythver = parseFloat(matches[1]);
+                if (mythver >= 0.26)
+                    utc_mode = true;
+            }
 
             // Find  progs.
             let progdata = xml.split(/<Program/);
@@ -501,6 +515,11 @@ const MythTV = new Lang.Class(
                         length_mins = "0"+length_mins;
                     let start = new Date(matches[4]);
                     let end   = new Date(matches[3]);
+                    if (utc_mode)
+                    {
+                        start.setUTCHours( start.getHours() );
+                        end.setUTCHours(   end.getHours()   );
+                    }
 
                     // Display
                     let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");

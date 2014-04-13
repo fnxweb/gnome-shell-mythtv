@@ -8,5 +8,9 @@
 #       The first line must be the free space in GB, the second the number of hours of recording this represents.
 #       If present, the third line must be a percentage-used value (used of the free space is >= 150 hours).
 
+# For MythTV pre 0.26
 myth 300 http://mythbox:6544/xml
+# For MythTV 0.26 onwards (default if no config file present)
+myth 300 http://mythbox:6544/Status/xml
+
 # free 60 http://localhost/custommyth/freespace.php

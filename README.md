@@ -3,7 +3,7 @@ GNOME Shell MythTV
 
 GNOME Shell extension to report MythTV status.  Licensed under the GPL V3.
 
-**Currently for GNOME 3.10.**
+**Currently for GNOME 3.10 & MythTV 0.24+**
 
 
 ### Installation
@@ -56,6 +56,9 @@ information.  Copy the existing file **config.eg** to **config** and edit it to
 point to a local HTTP server that can provide the required information.  Each
 config. line takes a name (“free” or “myth”), an update period in seconds and a
 URL.
+
+You will **have** to do this now if you have a MythTV version less than 0.26
+due to it now using the new MythTV services API.
 
 The “myth” data should be the standard Myth XML output.  The optional “free”
 data should be two to three lines, each with a numerical value.  The first line
