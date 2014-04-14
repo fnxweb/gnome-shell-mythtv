@@ -1,0 +1,4 @@
+#!/bin/bash
+[ -d mythtv-fnx@fnxweb.com ]  &&  cd mythtv-fnx@fnxweb.com
+git archive --format=zip -o /tmp/mythtv-extension.zip master
+# .. from inside mythtv-fnx@fnxweb.com
