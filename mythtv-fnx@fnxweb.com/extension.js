@@ -177,6 +177,7 @@ const MythTV = new Lang.Class(
         let label = new St.Label({text:"MythTV Status:"});
         box.add_actor(label);
         this.addMenuItem(box);
+        let status_column = new St.BoxLayout({vertical:true});
 
         // .. full free info
         box = new St.BoxLayout({style_class:'myth-data-row'});
@@ -200,7 +201,7 @@ const MythTV = new Lang.Class(
             this.FreeGBStatus = new St.Label({style_class:"myth-column",text:"?? GB"});
             box.add_actor(this.FreeGBStatus);
         }
-        this.addMenuItem(box);
+        status_column.add_actor(box);
 
         // .. listings status
         box = new St.BoxLayout({style_class:'myth-data-row'});
@@ -212,7 +213,10 @@ const MythTV = new Lang.Class(
         box.add_actor(label);
         this.ListingsLastStatus = new St.Label({style_class:"myth-column", text:"??"});
         box.add_actor(this.ListingsLastStatus);
-        this.addMenuItem(box);
+        status_column.add_actor(box);
+
+        // Done status section
+        this.addMenuItem(status_column);
 
 
         // .. heading 2
