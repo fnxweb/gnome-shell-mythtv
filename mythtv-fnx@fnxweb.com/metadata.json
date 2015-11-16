@@ -4,5 +4,5 @@
     "name": "MythTV",
     "url" : "https://github.com/fnxweb/gnome-shell-mythtv",
     "description": "Displays MythTV status (free space and upcoming recordings)",
-    "version": 6
+    "version": 7
 }
