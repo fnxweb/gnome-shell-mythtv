@@ -118,8 +118,10 @@ const MythTV = new Lang.Class(
                 {
                     // We only want the MythTV server name
                     let config_data = Shell.get_file_contents_utf8_sync(myth_config);
-                    let re = /<DBHostName>(.*?)<\/DBHostName/;
+                    let re = /<Host>(.*?)<\/Host/;
                     let matches;
+                    if ((matches = re.exec(config_data)) == null)
+                        re = /<DBHostName>(.*?)<\/DBHostName/;
                     if ((matches = re.exec(config_data)) != null)
                     {
                         this.MythUrl = "http://" + matches[1] + ":6544/Status/xml";
@@ -483,6 +485,7 @@ const MythTV = new Lang.Class(
         let listings = "??";
         let listings_status = "??";
         let utc_mode = false;
+        let mythver = 0.0;
         try
         {
             let xml = data.toString();
@@ -491,7 +494,6 @@ const MythTV = new Lang.Class(
             let stat = xml.split(/<Status/);
             if (stat.length > 1)
             {
-                let mythver = 0.0;
                 let vnre = /\bversion="([0-9]+\.[0-9]+)/;
                 let matches = vnre.exec(stat[1]);
                 if (matches != null)
@@ -499,68 +501,114 @@ const MythTV = new Lang.Class(
                 if (mythver >= 0.26)
                     utc_mode = true;
             }
+            this.dprint("found version " + mythver);
 
             // Find  progs.
             let progdata = xml.split(/<Program/);
             for (;  prog < this.Size && prog < progdata.length; ++prog)
             {
-                let re = /\btitle="([^"]*)".*?\bsubTitle="([^"]*)".*?\bendTime="([^"]*)".*?\bstartTime="([^"]*)"(.*)/;
-                let matches;
-                if ((matches = re.exec(progdata[prog+1])) != null)
+                // Pull out required program fields
+                let matches = { 'title':0, 'subTitle':0, 'endTime':0, 'startTime':0 };
+                for (key in matches)
                 {
-                    // Extract data
-                    let upcoming_title    = this.unescapeString(matches[1]);
-                    let upcoming_subtitle = this.unescapeString(matches[2]);
-                    let length = (Date.parse(matches[3]) - Date.parse(matches[4])) / 1000;
-                    let rest              = matches[5];
-                    let length_hours = Math.floor(length/3600);
-                    let length_mins  = Math.floor((length-(length_hours*3600))/60);
-                    if (length_mins < 10)
-                        length_mins = "0"+length_mins;
-                    let start = new Date(matches[4]);
-                    let end   = new Date(matches[3]);
-                    if (utc_mode)
-                    {
-                        start.setUTCHours( start.getHours() );
-                        end.setUTCHours(   end.getHours()   );
-                    }
-
-                    // Display
-                    let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
-                    let start_text = start.toLocaleTimeString().replace(/:..$/,'');
-                    let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
-                    this.UpcomingTitles[prog].set_text(      upcoming_title );
-                    this.UpcomingSubtitles[prog].set_text(   subtitle );
-                    this.UpcomingDays[prog].set_text(        this.Days[start.getDay()] );
-                    this.UpcomingTimes[prog].set_text(       start_text );
-                    this.UpcomingLengths[prog].set_text(     length_hours + ":" + length_mins );
-                    this.UpcomingLengthHours[prog].set_text( " hrs");
+                    let re = new RegExp('\\b' + key + '="([^"]*)"');
+                    let found = re.exec(progdata[prog+1]);
+                    if (found != null)
+                        matches[key] = found[1];
                 }
+
+                // Extract data
+                let upcoming_title    = this.unescapeString(matches['title']);
+                let upcoming_subtitle = this.unescapeString(matches['subTitle']);
+                let length = (Date.parse(matches['endTime']) - Date.parse(matches['startTime'])) / 1000;
+                let length_hours = Math.floor(length/3600);
+                let length_mins  = Math.floor((length-(length_hours*3600))/60);
+                if (length_mins < 10)
+                    length_mins = "0"+length_mins;
+                let start = new Date(matches['startTime']);
+                let end   = new Date(matches['endTime']);
+                if (utc_mode)
+                {
+                    start.setUTCHours( start.getHours() );
+                    end.setUTCHours(   end.getHours()   );
+                }
+
+                // Display
+                let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
+                let start_text = start.toLocaleTimeString().replace(/:..$/,'');
+                let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
+                this.UpcomingTitles[prog].set_text(      upcoming_title );
+                this.UpcomingSubtitles[prog].set_text(   subtitle );
+                this.UpcomingDays[prog].set_text(        this.Days[start.getDay()] );
+                this.UpcomingTimes[prog].set_text(       start_text );
+                this.UpcomingLengths[prog].set_text(     length_hours + ":" + length_mins );
+                this.UpcomingLengthHours[prog].set_text( " hrs");
             }
 
 
             // Free space, if not fetching that separately
             if (!this.WithFree)
             {
-                let re = /\bTotalDiskSpace\b.*?\btotal\b.*?\bfree="([^"]*)".*?\bdeleted="([^"]*)".*?\blivetv="([^"]*)"/;
-                let matches;
-                if ((matches = re.exec(xml)) != null)
+                // Find TotalDiskSpace group
+                this.dprint("Reading free space locally");
+                let re = new RegExp('<Group\\b[^>]*"TotalDiskSpace"[^>]*/>');
+                let totaldiskspace_matches = re.exec(xml);
+                if (totaldiskspace_matches == null)
                 {
-                    let gb = (parseFloat(matches[1]) + parseFloat(matches[2]) + parseFloat(matches[3]))
+                    this.dprint("NOT FOUND TotalDiskSpace");
+                }
+                else
+                {
+                    let totaldiskspace = totaldiskspace_matches[0];
+
+                    // Pull out required space fields
+                    let matches = { 'free':0, 'deleted':0, 'livetv':0 };
+                    for (key in matches)
+                    {
+                        re = new RegExp('\\b' + key + '="([^"]*)"');
+                        let found = re.exec(totaldiskspace);
+                        if (found != null)
+                            matches[key] = found[1];
+                    }
+
+                    // Calculate
+                    let gb = (parseFloat(matches['free']) + parseFloat(matches['deleted']) + parseFloat(matches['livetv']))
                             / 1024;
                     this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
                 }
             }
 
 
-            // Get guide status
-            let guidedata = xml.split(/<Guide/);
-            let re = /\bstatus="([^"]*)".*?\bguideDays="([^"]*)"/;
-            let matches;
-            if ((matches = re.exec(guidedata[1])) != null)
+            // Find Guide group
+            this.dprint("Reading guide data");
+            let re = new RegExp('<Guide\\b.*</Guide>');
+            let guide_matches = re.exec(xml);
+            if (guide_matches == null)
             {
-                listings = matches[2];
-                listings_status = matches[1].replace(/\..*/,'.');
+                re = new RegExp('<Guide\\b[^>]*/>');
+                guide_matches = re.exec(xml);
+            }
+            if (guide_matches == null)
+            {
+                this.dprint("NOT FOUND Guide");
+            }
+            else
+            {
+                let guide = guide_matches[0];
+
+                // Pull out required guide fields
+                let matches = { 'status':0, 'guideDays':0 };
+                for (key in matches)
+                {
+                    re = new RegExp('\\b' + key + '="([^"]*)"');
+                    let found = re.exec(guide);
+                    if (found != null)
+                        matches[key] = found[1];
+                }
+
+                // Get guide status
+                listings = matches['guideDays'];
+                listings_status = matches['status'].replace(/\..*/,'.');
             }
         }
         catch (err)
