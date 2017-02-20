@@ -509,7 +509,7 @@ const MythTV = new Lang.Class(
             {
                 // Pull out required program fields
                 let matches = { 'title':0, 'subTitle':0, 'endTime':0, 'startTime':0 };
-                for (key in matches)
+                for (let key in matches)
                 {
                     let re = new RegExp('\\b' + key + '="([^"]*)"');
                     let found = re.exec(progdata[prog+1]);
@@ -563,7 +563,7 @@ const MythTV = new Lang.Class(
 
                     // Pull out required space fields
                     let matches = { 'free':0, 'deleted':0, 'livetv':0 };
-                    for (key in matches)
+                    for (let key in matches)
                     {
                         re = new RegExp('\\b' + key + '="([^"]*)"');
                         let found = re.exec(totaldiskspace);
@@ -598,7 +598,7 @@ const MythTV = new Lang.Class(
 
                 // Pull out required guide fields
                 let matches = { 'status':0, 'guideDays':0 };
-                for (key in matches)
+                for (let key in matches)
                 {
                     re = new RegExp('\\b' + key + '="([^"]*)"');
                     let found = re.exec(guide);
