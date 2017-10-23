@@ -498,7 +498,7 @@ const MythTV = new Lang.Class(
                 let matches = vnre.exec(stat[1]);
                 if (matches != null)
                     mythver = parseFloat(matches[1]);
-                if (mythver >= 0.26)
+                if (mythver == 0.26)  // before 0.26 was localtime, from 0.27 gives TZ in string:  force 0.26 to parse UTC
                     utc_mode = true;
             }
             this.dprint("found version " + mythver);
