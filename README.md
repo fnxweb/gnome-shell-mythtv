@@ -18,7 +18,7 @@ Download the ZIP file (from the link above), and then install it from the GNOME
 *Advanced Settings* application's “Shell Extensions/Install Shell Extension”
 function.
 
-Alternatively, unpack **mythtv-fnx@fnxweb.com** as the directory
+Alternatively, unpack **mythtv-fnx<span>@</span>fnxweb.com** as the directory
 ***~/.local/share/gnome-shell/extensions/mythtv-fnx@fnxweb.com***
 alongside any other extensions you have.
 
