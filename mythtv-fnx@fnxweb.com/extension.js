@@ -55,7 +55,6 @@ const MythTV = new Lang.Class(
     _init : function()
     {
         this.parent(null, IndicatorName);
-        this.actor.accessible_role = Atk.Role.TOGGLE_BUTTON;
         MythTVExt.Metadata = ExtensionUtils.getCurrentExtension();
 
         // Read config
@@ -162,8 +161,7 @@ const MythTV = new Lang.Class(
         this.StatusLabel = new St.Label({text: "Myth" + (this.WithFree ? " " + this.HoursFree : "")});
 
         // Replace default icon placeholder with our icon
-        this.actor.get_children().forEach(function(c) { c.destroy() });
-        this.actor.add_actor(this.StatusLabel);
+        this.add_child( this.StatusLabel );
 
 
         // Prep. menu
@@ -597,7 +595,7 @@ const MythTV = new Lang.Class(
                 let guide = guide_matches[0];
 
                 // Pull out required guide fields
-                let matches = { 'status':0, 'guideDays':0 };
+                let matches = { 'status':'<?>', 'guideDays':'<?>' };
                 for (let key in matches)
                 {
                     re = new RegExp('\\b' + key + '="([^"]*)"');
