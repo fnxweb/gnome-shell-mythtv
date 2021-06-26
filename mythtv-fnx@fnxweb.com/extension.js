@@ -1,14 +1,9 @@
 // Import
-const GLib = imports.gi.GLib;
+const { Atk, Clutter, GLib, Shell, Soup, St } = imports.gi;
+const { main, panelMenu, popupMenu } = imports.ui;
+
 const Lang = imports.lang;
-const Main = imports.ui.main;
 const Mainloop = imports.mainloop;
-const PanelMenu = imports.ui.panelMenu;
-const PopupMenu = imports.ui.popupMenu;
-const Shell = imports.gi.Shell;
-const Soup = imports.gi.Soup;
-const St = imports.gi.St;
-const Atk = imports.gi.Atk;
 const ExtensionUtils = imports.misc.extensionUtils
 
 const IndicatorName = 'MythTV';
@@ -28,7 +23,7 @@ let MythTVExt = {
 const MythTV = new Lang.Class(
 {
     Name    : IndicatorName,
-    Extends : PanelMenu.Button,
+    Extends : panelMenu.Button,
 
     // Timer periods (seconds)
     FreeTime : 60,
@@ -158,17 +153,21 @@ const MythTV = new Lang.Class(
 
 
         // Create button
-        this.StatusLabel = new St.Label({text: "Myth" + (this.WithFree ? " " + this.HoursFree : "")});
+        this.StatusLabel = new St.Label({
+            text: "Myth" + (this.WithFree ? " " + this.HoursFree : ""),
+            y_expand: true,
+            y_align: Clutter.ActorAlign.CENTER
+        });
 
         // Replace default icon placeholder with our icon
         this.add_child( this.StatusLabel );
 
 
         // Prep. menu
-        if (Main.panel._menus == undefined)
-            Main.panel.menuManager.addMenu(this.menu);
+        if (main.panel._menus == undefined)
+            main.panel.menuManager.addMenu(this.menu);
         else
-            Main.panel._menus.addMenu(this.menu);
+            main.panel._menus.addMenu(this.menu);
 
 
         // Add status popup
@@ -220,7 +219,7 @@ const MythTV = new Lang.Class(
 
 
         // .. heading 2
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this.menu.addMenuItem(new popupMenu.PopupSeparatorMenuItem());
         box = new St.BoxLayout({style_class:"myth-heading-row"});
         label = new St.Label({text:"Upcoming recordings:"});
         box.add_actor(label);
@@ -309,7 +308,7 @@ const MythTV = new Lang.Class(
     // Add an item to the “menu”
     addMenuItem: function(item)
     {
-        let menuitem = new PopupMenu.PopupBaseMenuItem({ reactive:false });
+        let menuitem = new popupMenu.PopupBaseMenuItem({ reactive:false });
         menuitem.actor.add_actor( item );
         this.menu.addMenuItem( menuitem );
     },
@@ -641,7 +640,7 @@ function init()
 function enable()
 {
     MythTVExt.Button = new MythTV();
-    Main.panel.addToStatusArea( IndicatorName, MythTVExt.Button );
+    main.panel.addToStatusArea( IndicatorName, MythTVExt.Button );
 }
 
 // Turn off
