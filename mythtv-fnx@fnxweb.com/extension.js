@@ -8,14 +8,8 @@ const ExtensionUtils = imports.misc.extensionUtils
 const IndicatorName = 'MythTV';
 
 
-// Global storage
-let MythTVExt = {
-    // Extension metadata
-    Metadata : null,
-
-    // The button
-    Button : null
-};
+// The button
+let MythTVExtButton = null;
 
 
 // Implement MythTV class
@@ -28,7 +22,7 @@ class MythTV extends panelMenu.Button
         super._init( null, IndicatorName );
 
         // Us
-        MythTVExt.Metadata = ExtensionUtils.getCurrentExtension();
+        this.Metadata = ExtensionUtils.getCurrentExtension();
         this.Name     = IndicatorName;
 
         // Timer periods (seconds)
@@ -52,7 +46,7 @@ class MythTV extends panelMenu.Button
         this.MythUrl = '';
 
         // Read config
-        let config_file = MythTVExt.Metadata.path + "/config";
+        let config_file = this.Metadata.path + "/config";
         if (GLib.file_test(config_file, GLib.FileTest.EXISTS))
         {
             // There's a user config file
@@ -638,21 +632,15 @@ function init()
 // Turn on
 function enable()
 {
-    MythTVExt = {
-        // Extension metadata
-        Metadata : null,
-
-        // The button
-        Button : new MythTV()
-    };
-    main.panel.addToStatusArea( IndicatorName, MythTVExt.Button );
+    MythTVExtButton = new MythTV();
+    main.panel.addToStatusArea( IndicatorName, MythTVExtButton );
 }
 
 // Turn off
 function disable()
 {
-    Mainloop.source_remove(MythTVExt.Button.FreeEvent);
-    Mainloop.source_remove(MythTVExt.Button.MythEvent);
-    MythTVExt.Button.destroy();
-    MythTVExt = null;
+    Mainloop.source_remove(MythTVExtButton.FreeEvent);
+    Mainloop.source_remove(MythTVExtButton.MythEvent);
+    MythTVExtButton.destroy();
+    MythTVExtButton = null;
 }
