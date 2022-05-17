@@ -2,7 +2,6 @@
 const { Atk, Clutter, GLib, GObject, Shell, Soup, St } = imports.gi;
 const { main, panelMenu, popupMenu } = imports.ui;
 
-const Lang = imports.lang;
 const Mainloop = imports.mainloop;
 const ExtensionUtils = imports.misc.extensionUtils
 
@@ -278,14 +277,14 @@ class MythTV extends panelMenu.Button
 
         // Update basics frequently, update listings every five minutes
         if (this.WithFree)
-            this.FreeEvent = GLib.timeout_add_seconds(0, this.FreeTime, Lang.bind(this, function () {
+            this.FreeEvent = GLib.timeout_add_seconds(0, this.FreeTime, () => {
                 this.getMythFreeStatus();
                 return true;
-            }));
-        this.MythEvent = GLib.timeout_add_seconds(0, this.MythTime, Lang.bind(this, function () {
+            });
+        this.MythEvent = GLib.timeout_add_seconds(0, this.MythTime, () => {
             this.getMythUpcomingStatus();
             return true;
-        }));
+        });
     }
 
 
@@ -639,7 +638,13 @@ function init()
 // Turn on
 function enable()
 {
-    MythTVExt.Button = new MythTV();
+    MythTVExt = {
+        // Extension metadata
+        Metadata : null,
+
+        // The button
+        Button : new MythTV()
+    };
     main.panel.addToStatusArea( IndicatorName, MythTVExt.Button );
 }
 
@@ -649,5 +654,5 @@ function disable()
     Mainloop.source_remove(MythTVExt.Button.FreeEvent);
     Mainloop.source_remove(MythTVExt.Button.MythEvent);
     MythTVExt.Button.destroy();
-    MythTVExt.Button = null;
+    MythTVExt = null;
 }
