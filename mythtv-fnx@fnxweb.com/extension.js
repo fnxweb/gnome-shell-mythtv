@@ -1,5 +1,5 @@
 // Import
-const { Atk, Clutter, GLib, Shell, Soup, St } = imports.gi;
+const { Atk, Clutter, GLib, GObject, Shell, Soup, St } = imports.gi;
 const { main, panelMenu, popupMenu } = imports.ui;
 
 const Lang = imports.lang;
@@ -20,37 +20,37 @@ let MythTVExt = {
 
 
 // Implement MythTV class
-const MythTV = new Lang.Class(
+const MythTV = GObject.registerClass(
+class MythTV extends panelMenu.Button
 {
-    Name    : IndicatorName,
-    Extends : panelMenu.Button,
-
-    // Timer periods (seconds)
-    FreeTime : 60,
-    MythTime : 300,
-
-    // Data
-    Debug     : false,
-    Size      : 10,
-    Days      : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
-    WithFree  : false,
-    HoursFree : "?:??",
-    Used      : "??%",
-
-    // Updates
-    FreeEvent : null,
-    MythEvent : null,
-
-    // URLs to use
-    FreeUrl : '',
-    MythUrl : '',
-
-
     // ctor
-    _init : function()
+    _init()
     {
-        this.parent(null, IndicatorName);
+        super._init( null, IndicatorName );
+
+        // Us
         MythTVExt.Metadata = ExtensionUtils.getCurrentExtension();
+        this.Name     = IndicatorName;
+
+        // Timer periods (seconds)
+        this.FreeTime = 60;
+        this.MythTime = 300;
+
+        // Data
+        this.Debug     = false;
+        this.Size      = 10;
+        this.Days      = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+        this.WithFree  = false;
+        this.HoursFree = "?:??";
+        this.Used      = "??%";
+
+        // Updates
+        this.FreeEvent = null;
+        this.MythEvent = null;
+
+        // URLs to use
+        this.FreeUrl = '';
+        this.MythUrl = '';
 
         // Read config
         let config_file = MythTVExt.Metadata.path + "/config";
@@ -286,36 +286,36 @@ const MythTV = new Lang.Class(
             this.getMythUpcomingStatus();
             return true;
         }));
-    },
+    }
 
 
     // Debug
-    dprint: function(msg)
+    dprint(msg)
     {
         if (this.Debug)
             this.eprint(msg);
-    },
+    }
 
     // Error
-    eprint: function(msg)
+    eprint(msg)
     {
         global.log("MythTV: " + msg);
         if (this.Debug)
             print("MythTV: " + msg);
-    },
+    }
 
 
     // Add an item to the “menu”
-    addMenuItem: function(item)
+    addMenuItem(item)
     {
         let menuitem = new popupMenu.PopupBaseMenuItem({ reactive:false });
         menuitem.actor.add_actor( item );
         this.menu.addMenuItem( menuitem );
-    },
+    }
 
 
     // Split line into a paragraph
-    formatParagraph: function(text,width)
+    formatParagraph(text,width)
     {
         let para = "";
         try
@@ -358,11 +358,11 @@ const MythTV = new Lang.Class(
             this.eprint("exception formatting paragraph: " + err);
         }
         return para;
-    },
+    }
 
 
     // Un-escape XML encoded strings
-    unescapeString: function(xmlstr)
+    unescapeString(xmlstr)
     {
         xmlstr = xmlstr.replace(/&lt;/,   '<', 'g');
         xmlstr = xmlstr.replace(/&gt;/,   '>', 'g');
@@ -370,11 +370,11 @@ const MythTV = new Lang.Class(
         xmlstr = xmlstr.replace(/&apos;/, "'", 'g');
         xmlstr = xmlstr.replace(/&amp;/,  '&', 'g');
         return xmlstr;
-    },
+    }
 
 
     // Request free info.
-    getMythFreeStatus: function()
+    getMythFreeStatus()
     {
         this.dprint("getting free");
         if (this.FreeUrl == '')
@@ -395,11 +395,11 @@ const MythTV = new Lang.Class(
         {
             this.eprint("exception requesting free info.: " + err);
         }
-    },
+    }
 
 
     // Request listings info.
-    getMythUpcomingStatus: function()
+    getMythUpcomingStatus()
     {
         this.dprint("getting listings");
         if (this.MythUrl == '')
@@ -420,11 +420,11 @@ const MythTV = new Lang.Class(
         {
             this.dprint("exception requesting listings info.: " + err);
         }
-    },
+    }
 
 
     // Read free info.
-    processMythFreeStatus: function(data)
+    processMythFreeStatus(data)
     {
         this.dprint("processing free");
 
@@ -469,11 +469,11 @@ const MythTV = new Lang.Class(
         }
         this.FreeStatus.set_text(this.HoursFree);
         this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
-    },
+    }
 
 
     // Read listings info.
-    processMythUpcomingStatus: function(data)
+    processMythUpcomingStatus(data)
     {
         this.dprint("processing listings");
 
@@ -628,7 +628,7 @@ const MythTV = new Lang.Class(
             this.UpcomingLengthHours[prog].set_text( '' );
         }
     }
-})
+});
 
 
 // Setup
