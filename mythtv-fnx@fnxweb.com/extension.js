@@ -166,44 +166,44 @@ class MythTV extends panelMenu.Button
         // Add status popup
         // .. heading 1
         let box = new St.BoxLayout({style_class:'myth-heading-row'});
-        let label = new St.Label({text:"MythTV Status:"});
+        let label = new St.Label({style_class:'stage popup-menu myth-data', text:"MythTV Status:"});
         box.add_actor(label);
         this.addMenuItem(box);
         let status_column = new St.BoxLayout({vertical:true});
 
         // .. full free info
         box = new St.BoxLayout({style_class:'myth-data-row'});
-        label = new St.Label({style_class:"myth-misc-label", text:"Free space: "});
+        label = new St.Label({style_class:"myth-misc-label", text:"Free space:  "});
         box.add_actor(label);
         if (this.WithFree)
         {
             // Free space with hours and GB
-            this.FreeStatus = new St.Label({text:"??"});
+            this.FreeStatus = new St.Label({style_class:'stage popup-menu myth-data', text:"??"});
             box.add_actor(this.FreeStatus);
-            label = new St.Label({style_class:"myth-misc-label", text:" hrs ("});
+            label = new St.Label({style_class:"myth-misc-label", text:" hrs  ("});
             box.add_actor(label);
-            this.FreeGBStatus = new St.Label({text:"?? GB"});
+            this.FreeGBStatus = new St.Label({style_class:'stage popup-menu myth-data', text:"?? GB"});
             box.add_actor(this.FreeGBStatus);
-            label = new St.Label({style_class:"myth-misc-label myth-column", text:")"});
+            label = new St.Label({style_class:"myth-misc-label", text:")"});
             box.add_actor(label);
         }
         else
         {
             // Only GB free
-            this.FreeGBStatus = new St.Label({style_class:"myth-column",text:"?? GB"});
+            this.FreeGBStatus = new St.Label({style_class:"",text:"?? GB"});
             box.add_actor(this.FreeGBStatus);
         }
         status_column.add_actor(box);
 
         // .. listings status
         box = new St.BoxLayout({style_class:'myth-data-row'});
-        label = new St.Label({style_class:"myth-misc-label", text:"Listing days available: "});
+        label = new St.Label({style_class:"myth-misc-label", text:"Listing days available:  "});
         box.add_actor(label);
-        this.ListingsStatus = new St.Label({text:"??"});
+        this.ListingsStatus = new St.Label({style_class:'stage popup-menu myth-data', text:"??"});
         box.add_actor(this.ListingsStatus);
-        label = new St.Label({style_class:"myth-misc-label", text:".  Last fetch: "});
+        label = new St.Label({style_class:"myth-misc-label", text:".  Last fetch:  "});
         box.add_actor(label);
-        this.ListingsLastStatus = new St.Label({style_class:"myth-column", text:"??"});
+        this.ListingsLastStatus = new St.Label({style_class:"stage popup-menu myth-data", text:"??"});
         box.add_actor(this.ListingsLastStatus);
         status_column.add_actor(box);
 
@@ -214,7 +214,7 @@ class MythTV extends panelMenu.Button
         // .. heading 2
         this.menu.addMenuItem(new popupMenu.PopupSeparatorMenuItem());
         box = new St.BoxLayout({style_class:"myth-heading-row"});
-        label = new St.Label({text:"Upcoming recordings:"});
+        label = new St.Label({style_class:'stage popup-menu myth-data', text:"Upcoming recordings:"});
         box.add_actor(label);
         this.addMenuItem(box);
 
@@ -242,7 +242,7 @@ class MythTV extends panelMenu.Button
         {
             // titles
             box = new St.BoxLayout();
-            this.UpcomingTitles[idx] = new St.Label({text:""});
+            this.UpcomingTitles[idx] = new St.Label({style_class:'stage popup-menu myth-data', text:""});
             box.add_actor(this.UpcomingTitles[idx]);
             this.UpcomingSubtitles[idx] = new St.Label({style_class:"myth-misc-label myth-column", text:""});
             box.add_actor(this.UpcomingSubtitles[idx]);
@@ -256,7 +256,7 @@ class MythTV extends panelMenu.Button
 
             // lengths
             box = new St.BoxLayout();
-            this.UpcomingLengths[idx] = new St.Label({text:""});
+            this.UpcomingLengths[idx] = new St.Label({style_class:'stage popup-menu myth-length', text:""});
             box.add_actor(this.UpcomingLengths[idx]);
             this.UpcomingLengthHours[idx] = new St.Label({style_class:"myth-misc-label myth-column", text:""});
             box.add_actor(this.UpcomingLengthHours[idx]);
@@ -524,7 +524,7 @@ class MythTV extends panelMenu.Button
                 }
 
                 // Display
-                let subtitle = ((upcoming_subtitle == "")  ?  ""  :  " (" + upcoming_subtitle + ")");
+                let subtitle = ((upcoming_subtitle == "")  ?  ""  :  "  (" + upcoming_subtitle + ")");
                 let start_text = start.toLocaleTimeString().replace(/:..$/,'');
                 let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
                 this.UpcomingTitles[prog].set_text(      upcoming_title );

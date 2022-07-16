@@ -3,24 +3,26 @@
   padding-left: 30px;
 }
 
-StLabel
+.myth-data
 {
-  color: #ffffff;
+  font-weight: bold;
+  min-width: 1em;
 }
 
-StLabel .myth-data-row
+.myth-length
+{
+  font-weight: bold;
+  min-width: 2.5em;
+}
+
+.myth-data-row
 {
   padding-left: 45px;
 }
 
 .separator
 {
-  color: #dddddd;
-}
-
-.myth-misc-label
-{
-  color: #999999;
+  color: #888888;
 }
 
 .myth-right
