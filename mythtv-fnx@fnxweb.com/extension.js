@@ -251,12 +251,12 @@ class MythTV extends panelMenu.Button
             // times
             this.UpcomingDays[idx]  = new St.Label({style_class:"myth-misc-label myth-padded myth-right", text:""});
             day_column.add_actor(this.UpcomingDays[idx]);
-            this.UpcomingTimes[idx] = new St.Label({style_class:"myth-column", text:""});
+            this.UpcomingTimes[idx] = new St.Label({style_class:"stage popup-menu myth-data myth-column", text:""});
             time_column.add_actor(this.UpcomingTimes[idx]);
 
             // lengths
             box = new St.BoxLayout();
-            this.UpcomingLengths[idx] = new St.Label({style_class:'stage popup-menu myth-length', text:""});
+            this.UpcomingLengths[idx] = new St.Label({style_class:'stage popup-menu myth-length myth-right', text:""});
             box.add_actor(this.UpcomingLengths[idx]);
             this.UpcomingLengthHours[idx] = new St.Label({style_class:"myth-misc-label myth-column", text:""});
             box.add_actor(this.UpcomingLengthHours[idx]);
