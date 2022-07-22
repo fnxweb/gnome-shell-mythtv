@@ -1,17 +1,16 @@
 .myth-heading-row
 {
+  font-weight: bold;
   padding-left: 30px;
 }
 
 .myth-data
 {
-  font-weight: bold;
   min-width: 1em;
 }
 
 .myth-length
 {
-  font-weight: bold;
   min-width: 2.5em;
 }
 
