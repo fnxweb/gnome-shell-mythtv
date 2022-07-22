@@ -190,7 +190,7 @@ class MythTV extends panelMenu.Button
         else
         {
             // Only GB free
-            this.FreeGBStatus = new St.Label({style_class:"",text:"?? GB"});
+            this.FreeGBStatus = new St.Label({style_class:"stage popup-menu myth-data",text:"?? GB"});
             box.add_actor(this.FreeGBStatus);
         }
         status_column.add_actor(box);
