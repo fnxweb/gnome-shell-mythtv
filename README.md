@@ -3,8 +3,6 @@ GNOME Shell MythTV
 
 GNOME Shell extension to report MythTV status.  Licensed under the GPL V3.
 
-**Currently for GNOME 3.10 & MythTV 0.24+**
-
 
 ### Installation
 
