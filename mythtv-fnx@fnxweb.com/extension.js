@@ -387,7 +387,6 @@ class MythTV extends panelMenu.Button
                     {
                         let bytes = session.send_and_read_finish(result);
                         let response = this.Decoder.decode(bytes.get_data());
-me.dprint(`++ free response: '${response}'`);
                         me.processMythFreeStatus(response);
                     }
                     else
@@ -421,7 +420,6 @@ me.dprint(`++ free response: '${response}'`);
                     {
                         let bytes = session.send_and_read_finish(result);
                         let response = this.Decoder.decode(bytes.get_data());
-me.dprint(`++ upcoming response: '${response}'`);
                         me.processMythUpcomingStatus(response);
                     }
                     else
