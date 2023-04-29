@@ -25,6 +25,9 @@ class MythTV extends panelMenu.Button
         this.Metadata = ExtensionUtils.getCurrentExtension();
         this.Name     = IndicatorName;
 
+        // Processing
+        this.Decoder = new TextDecoder('utf8');
+
         // Timer periods (seconds)
         this.FreeTime = 60;
         this.MythTime = 300;
@@ -132,9 +135,7 @@ class MythTV extends panelMenu.Button
 
 
         // Create a Soup session with which to do requests
-        this.SoupSession = new Soup.SessionAsync();
-        if (Soup.Session.prototype.add_feature != null)
-            Soup.Session.prototype.add_feature.call(this.SoupSession, new Soup.ProxyResolverDefault());
+        this.SoupSession = new Soup.Session();
 
         // Default data
         this.GbFree = "??? GB";
@@ -377,12 +378,21 @@ class MythTV extends panelMenu.Button
             // Trigger request
             let me = this;
             let request = Soup.Message.new('GET', this.FreeUrl);
-            this.SoupSession.queue_message(request, function(soup, message) {
-                if (message.status_code == 200)
-                    me.processMythFreeStatus(request.response_body.data);
-                else
-                    me.dprint("error retrieving free info: " + message.status_code);
-            });
+            this.SoupSession.send_and_read_async(
+                request,
+                GLib.PRIORITY_DEFAULT,
+                null,
+                (session, result) => {
+                    if (request.get_status() === Soup.Status.OK)
+                    {
+                        let bytes = session.send_and_read_finish(result);
+                        let response = this.Decoder.decode(bytes.get_data());
+me.dprint(`++ free response: '${response}'`);
+                        me.processMythFreeStatus(response);
+                    }
+                    else
+                        me.dprint("error retrieving free info: " + request.get_status());
+                });
         }
         catch (err)
         {
@@ -402,12 +412,21 @@ class MythTV extends panelMenu.Button
             // Trigger request
             let me = this;
             let request = Soup.Message.new('GET', this.MythUrl);
-            this.SoupSession.queue_message(request, function(soup, message) {
-                if (message.status_code == 200)
-                    me.processMythUpcomingStatus(request.response_body.data);
-                else
-                    me.dprint("error retrieving myth info: " + message.status_code);
-            });
+            this.SoupSession.send_and_read_async(
+                request,
+                GLib.PRIORITY_DEFAULT,
+                null,
+                (session, result) => {
+                    if (request.get_status() === Soup.Status.OK)
+                    {
+                        let bytes = session.send_and_read_finish(result);
+                        let response = this.Decoder.decode(bytes.get_data());
+me.dprint(`++ upcoming response: '${response}'`);
+                        me.processMythUpcomingStatus(response);
+                    }
+                    else
+                        me.dprint("error retrieving myth info: " + request.get_status());
+                });
         }
         catch (err)
         {
@@ -461,7 +480,7 @@ class MythTV extends panelMenu.Button
                 this.StatusLabel.set_text("Myth " + this.HoursFree);
         }
         this.FreeStatus.set_text(this.HoursFree);
-        this.FreeGBStatus.set_text(gb.toFixed(3) + " GB");
+        this.FreeGBStatus.set_text(gb.toFixed(1) + " GB");
     }
 
 
