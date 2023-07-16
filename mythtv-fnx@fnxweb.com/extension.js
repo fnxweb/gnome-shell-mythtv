@@ -512,7 +512,7 @@ class MythTV extends panelMenu.Button
 
             // Find  progs.
             let progdata = xml.split(/<Program/);
-            for (;  prog < this.Size && prog < progdata.length; ++prog)
+            for (;  prog < this.Size && prog < progdata.length-1; ++prog)
             {
                 // Pull out required program fields
                 let matches = { 'title':0, 'subTitle':0, 'endTime':0, 'startTime':0 };
