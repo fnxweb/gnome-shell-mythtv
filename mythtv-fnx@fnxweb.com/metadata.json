@@ -3,5 +3,6 @@
     "uuid": "mythtv-fnx@fnxweb.com",
     "name": "MythTV",
     "url" : "https://github.com/fnxweb/gnome-shell-mythtv",
-    "description": "Displays MythTV status (free space and upcoming recordings)"
+    "description": "Displays MythTV status (free space and upcoming recordings)",
+    "version": 15
 }
