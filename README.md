@@ -77,4 +77,18 @@ edit the code & restart GNOME Shell.  All the relevant settings are near the
 top of **extensions.js**.
 
 
+### ESLint
+
+I'm trying to use ESLint to sanity check the code so will check in some of what I think I need.
+
+To install:
+```
+npm init @eslint/config
+```
+To run:
+```
+npx eslint pi-hole@fnxweb.com
+```
+
+
 © Neil Bird  git@fnxweb.com
