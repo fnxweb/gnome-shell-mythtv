@@ -1,9 +1,14 @@
 // Import
-const { Atk, Clutter, GLib, GObject, Shell, Soup, St } = imports.gi;
-const { main, panelMenu, popupMenu } = imports.ui;
-
-const Mainloop = imports.mainloop;
-const ExtensionUtils = imports.misc.extensionUtils
+import Clutter from 'gi://Clutter';
+import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
+import Soup from 'gi://Soup';
+import St from 'gi://St';
+import * as main from 'resource:///org/gnome/shell/ui/main.js';
+import * as panelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import * as popupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { Extension } from "resource:///org/gnome/shell/extensions/extension.js";
 
 const IndicatorName = 'MythTV';
 
@@ -17,13 +22,13 @@ const MythTV = GObject.registerClass(
 class MythTV extends panelMenu.Button
 {
     // ctor
-    _init()
+    constructor( ext )
     {
-        super._init( null, IndicatorName );
+        super( null, IndicatorName );
 
         // Us
-        this.Metadata = ExtensionUtils.getCurrentExtension();
-        this.Name     = IndicatorName;
+        this.Extension = ext;
+        this.Name      = IndicatorName;
 
         // Processing
         this.Decoder = new TextDecoder('utf8');
@@ -49,7 +54,7 @@ class MythTV extends panelMenu.Button
         this.MythUrl = '';
 
         // Read config
-        let config_file = this.Metadata.path + "/config";
+        let config_file = this.Extension.path + "/config";
         if (GLib.file_test(config_file, GLib.FileTest.EXISTS))
         {
             // There's a user config file
@@ -64,9 +69,9 @@ class MythTV extends panelMenu.Button
                 for (let line = 0;  line < config_data.length;  ++line)
                 {
                     // Extract type and URL from line
-                    if (config_data[line].length  &&  (matches = re.exec(config_data[line])) != null)
+                    if (config_data[line].length  &&  (matches = re.exec(config_data[line])) !== null)
                     {
-                        if (matches[1] == "free")
+                        if (matches[1] === "free")
                         {
                             // Free space config
                             this.WithFree = true;
@@ -74,7 +79,7 @@ class MythTV extends panelMenu.Button
                             this.FreeUrl  = matches[3];
                             this.dprint("Reading free at " + this.FreeTime + " seconds from " + this.FreeUrl);
                         }
-                        else if (matches[1] == "myth")
+                        else if (matches[1] === "myth")
                         {
                             // Myth XML config
                             this.MythTime = 0 + matches[2];
@@ -86,7 +91,7 @@ class MythTV extends panelMenu.Button
                             this.eprint("Failed to parse config file line " + line + ": '" + config_data[line] + "'");
                         }
                     }
-                    else if (config_data[line].length  &&  (matches = r0.exec(config_data[line])) == null)
+                    else if (config_data[line].length  &&  (matches = r0.exec(config_data[line])) === null)
                     {
                         this.eprint("Unrecognised config file line " + line + ": '" + config_data[line] + "'");
                     }
@@ -110,9 +115,9 @@ class MythTV extends panelMenu.Button
                     let config_data = Shell.get_file_contents_utf8_sync(myth_config);
                     let re = /<Host>(.*?)<\/Host/;
                     let matches;
-                    if ((matches = re.exec(config_data)) == null)
+                    if ((matches = re.exec(config_data)) === null)
                         re = /<DBHostName>(.*?)<\/DBHostName/;
-                    if ((matches = re.exec(config_data)) != null)
+                    if ((matches = re.exec(config_data)) !== null)
                     {
                         this.MythUrl = "http://" + matches[1] + ":6544/Status/xml";
                         this.dprint("Reading Myth at " + this.MythTime + " seconds from " + this.MythUrl);
@@ -158,7 +163,7 @@ class MythTV extends panelMenu.Button
 
 
         // Prep. menu
-        if (main.panel._menus == undefined)
+        if (main.panel._menus === undefined)
             main.panel.menuManager.addMenu(this.menu);
         else
             main.panel._menus.addMenu(this.menu);
@@ -272,10 +277,16 @@ class MythTV extends panelMenu.Button
 
         // Update basics frequently, update listings every five minutes
         if (this.WithFree)
+        {
+            if (this.FreeEvent)
+                GLib.source_remove( this.FreeEvent );
             this.FreeEvent = GLib.timeout_add_seconds(0, this.FreeTime, () => {
                 this.getMythFreeStatus();
                 return true;
             });
+        }
+        if (this.MythEvent)
+            GLib.source_remove( this.MythEvent );
         this.MythEvent = GLib.timeout_add_seconds(0, this.MythTime, () => {
             this.getMythUpcomingStatus();
             return true;
@@ -293,7 +304,7 @@ class MythTV extends panelMenu.Button
     // Error
     eprint(msg)
     {
-        global.log("MythTV: " + msg);
+        console.log("MythTV: " + msg);
         if (this.Debug)
             print("MythTV: " + msg);
     }
@@ -318,7 +329,7 @@ class MythTV extends panelMenu.Button
             while (text.length > width)
             {
                 let matches = words.exec(text);
-                if (matches != null)
+                if (matches !== null)
                 {
                     // We have a line, and some more afterwards.
                     let newline = matches[1];
@@ -371,7 +382,7 @@ class MythTV extends panelMenu.Button
     getMythFreeStatus()
     {
         this.dprint("getting free");
-        if (this.FreeUrl == '')
+        if (this.FreeUrl === '')
             return;
         try
         {
@@ -404,7 +415,7 @@ class MythTV extends panelMenu.Button
     getMythUpcomingStatus()
     {
         this.dprint("getting listings");
-        if (this.MythUrl == '')
+        if (this.MythUrl === '')
             return;
         try
         {
@@ -503,9 +514,9 @@ class MythTV extends panelMenu.Button
             {
                 let vnre = /\bversion="([0-9]+\.[0-9]+)/;
                 let matches = vnre.exec(stat[1]);
-                if (matches != null)
+                if (matches !== null)
                     mythver = parseFloat(matches[1]);
-                if (mythver == 0.26)  // before 0.26 was localtime, from 0.27 gives TZ in string:  force 0.26 to parse UTC
+                if (mythver === 0.26)  // before 0.26 was localtime, from 0.27 gives TZ in string:  force 0.26 to parse UTC
                     utc_mode = true;
             }
             this.dprint("found version " + mythver);
@@ -520,7 +531,7 @@ class MythTV extends panelMenu.Button
                 {
                     let re = new RegExp('\\b' + key + '="([^"]*)"');
                     let found = re.exec(progdata[prog+1]);
-                    if (found != null)
+                    if (found !== null)
                         matches[key] = found[1];
                 }
 
@@ -541,9 +552,9 @@ class MythTV extends panelMenu.Button
                 }
 
                 // Display
-                let subtitle = ((upcoming_subtitle == "")  ?  ""  :  "  (" + upcoming_subtitle + ")");
+                let subtitle = ((upcoming_subtitle === "")  ?  ""  :  "  (" + upcoming_subtitle + ")");
                 let start_text = start.toLocaleTimeString().replace(/:..$/,'');
-                let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
+                // let end_text   =   end.toLocaleTimeString().replace(/:..$/,'');
                 this.UpcomingTitles[prog].set_text(      upcoming_title );
                 this.UpcomingSubtitles[prog].set_text(   subtitle );
                 this.UpcomingDays[prog].set_text(        this.Days[start.getDay()] );
@@ -560,7 +571,7 @@ class MythTV extends panelMenu.Button
                 this.dprint("Reading free space locally");
                 let re = new RegExp('<Group\\b[^>]*"TotalDiskSpace"[^>]*/>');
                 let totaldiskspace_matches = re.exec(xml);
-                if (totaldiskspace_matches == null)
+                if (totaldiskspace_matches === null)
                 {
                     this.dprint("NOT FOUND TotalDiskSpace");
                 }
@@ -574,7 +585,7 @@ class MythTV extends panelMenu.Button
                     {
                         re = new RegExp('\\b' + key + '="([^"]*)"');
                         let found = re.exec(totaldiskspace);
-                        if (found != null)
+                        if (found !== null)
                             matches[key] = found[1];
                     }
 
@@ -590,12 +601,12 @@ class MythTV extends panelMenu.Button
             this.dprint("Reading guide data");
             let re = new RegExp('<Guide\\b.*</Guide>');
             let guide_matches = re.exec(xml);
-            if (guide_matches == null)
+            if (guide_matches === null)
             {
                 re = new RegExp('<Guide\\b[^>]*/>');
                 guide_matches = re.exec(xml);
             }
-            if (guide_matches == null)
+            if (guide_matches === null)
             {
                 this.dprint("NOT FOUND Guide");
             }
@@ -609,7 +620,7 @@ class MythTV extends panelMenu.Button
                 {
                     re = new RegExp('\\b' + key + '="([^"]*)"');
                     let found = re.exec(guide);
-                    if (found != null)
+                    if (found !== null)
                         matches[key] = found[1];
                 }
 
@@ -641,23 +652,29 @@ class MythTV extends panelMenu.Button
 });
 
 
-// Setup
-function init()
+// MythTV extension  (TBD separate out the button code into distinct ext/button stuff)
+export default class MythTVExtension extends Extension
 {
-}
+    constructor(metadata)
+    {
+        super(metadata);
+    }
 
-// Turn on
-function enable()
-{
-    MythTVExtButton = new MythTV();
-    main.panel.addToStatusArea( IndicatorName, MythTVExtButton );
-}
+    // Turn on
+    enable()
+    {
+        MythTVExtButton = new MythTV(this);
+        main.panel.addToStatusArea( IndicatorName, MythTVExtButton );
+    }
 
-// Turn off
-function disable()
-{
-    Mainloop.source_remove(MythTVExtButton.FreeEvent);
-    Mainloop.source_remove(MythTVExtButton.MythEvent);
-    MythTVExtButton.destroy();
-    MythTVExtButton = null;
+    // Turn off
+    disable()
+    {
+        if (MythTVExtButton.FreeEvent)
+            GLib.source_remove( MythTVExtButton.FreeEvent );
+        if (MythTVExtButton.MythEvent)
+            GLib.source_remove( MythTVExtButton.MythEvent );
+        MythTVExtButton.destroy();
+        MythTVExtButton = null;
+    }
 }
