@@ -87,7 +87,7 @@ npm init @eslint/config
 ```
 To run:
 ```
-npx eslint pi-hole@fnxweb.com
+npx eslint mythtv-fnx@fnxweb.com
 ```
 
 
