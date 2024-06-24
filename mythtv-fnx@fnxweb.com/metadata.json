@@ -1,8 +1,8 @@
 {
-    "shell-version": ["45"],
+    "shell-version": ["45","46"],
     "uuid": "mythtv-fnx@fnxweb.com",
     "name": "MythTV",
     "url" : "https://github.com/fnxweb/gnome-shell-mythtv",
     "description": "Displays MythTV status (free space and upcoming recordings)",
-    "version": 16
+    "version": 17
 }
